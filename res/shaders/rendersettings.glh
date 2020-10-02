@@ -1,0 +1,8 @@
+layout(binding=0, std140) uniform RenderSettings {
+	mat4 vpMatrix;
+	mat4 vpMatrixInv;
+	vec3 cameraPos;
+	float gameTime;
+	vec3 sunColor;
+	vec3 sunDir;
+} rs;

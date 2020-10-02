@@ -1,0 +1,48 @@
+vec2 smEncode(vec3 n) {
+	if (n.z < -0.999)
+		return vec2(0.5, 1);
+	float p = sqrt(n.z * 8 + 8);
+	return vec2(n.xy / p + 0.5);
+}
+
+vec3 smDecode(vec2 s) {
+	vec2 fenc = s * 4 - 2;
+	float f = dot(fenc, fenc);
+	float g = sqrt(max(1 - f / 4, 0));
+	return normalize(vec3(fenc * g, 1 - f / 2));
+}
+
+vec3 worldPosFromDepth(float depthH, vec2 screenCoord, mat4 inverseViewProj) {
+	vec4 h = vec4(screenCoord * 2 - 1, depthH * 2 - 1, 1);
+	vec4 d = inverseViewProj * h;
+	return d.xyz / d.w;
+}
+
+const float MAX_SPEC_INTENSITY = 20;
+const float MAX_SPEC_EXPONENT = 100;
+
+struct MaterialData {
+	vec3 diffuse;
+	vec3 normal;
+	float specIntensity;
+	float specExponent;
+	float ambientOcclusion;
+};
+
+vec4 packMaterialData1(MaterialData data) {
+	return vec4(data.diffuse, data.ambientOcclusion);
+}
+
+vec4 packMaterialData2(MaterialData data) {
+	return vec4(smEncode(data.normal), data.specIntensity / MAX_SPEC_INTENSITY, data.specExponent / MAX_SPEC_EXPONENT);
+}
+
+MaterialData readMaterialData(vec4 color1, vec4 color2) {
+	MaterialData data;
+	data.diffuse          = color1.rgb;
+	data.ambientOcclusion = color1.a;
+	data.normal           = smDecode(color2.rg);
+	data.specIntensity    = color2.b * MAX_SPEC_INTENSITY;
+	data.specExponent     = color2.a * MAX_SPEC_EXPONENT;
+	return data;
+}
