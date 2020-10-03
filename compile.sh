@@ -27,4 +27,4 @@ done
 wait
 
 echo "linking..."
-g++ $(find obj -name "*.cpp.o") -o game $(pkg-config --libs sdl2 SDL2_image glew)
+g++ $(find obj -name "*.cpp.o") -o game $(pkg-config --libs sdl2 SDL2_image glew) -lnoise

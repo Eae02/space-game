@@ -4,6 +4,7 @@
 #include "input.hpp"
 #include "resources.hpp"
 #include "ship.hpp"
+#include "graphics/asteroids.hpp"
 #include "graphics/model.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/renderer.hpp"
@@ -64,12 +65,14 @@ int main() {
 	emissiveShader.attachStage(GL_FRAGMENT_SHADER, "emissive.fs.glsl");
 	emissiveShader.link("emissive");
 	
-	const glm::vec3 emissiveColor = 5.0f * glm::vec3(0.2f, 0.3f, 2.0f);
+	const glm::vec3 emissiveColor = 5.0f * glm::convertSRGBToLinear(glm::vec3(0.2f, 0.3f, 2.0f));
 	glProgramUniform3fv(emissiveShader.program, 1, 1, (const float*)&emissiveColor);
 	
 	renderer::initialize();
 	
 	stars::initialize();
+	
+	initializeAsteroids();
 	
 	uint64_t lastFrameBegin = SDL_GetPerformanceCounter();
 	const uint64_t perfCounterFrequency = SDL_GetPerformanceFrequency();
@@ -121,7 +124,7 @@ int main() {
 		renderSettings.sunDir = glm::normalize(glm::vec3(1, -1, 1));
 		renderer::updateRenderSettings(renderSettings);
 		
-		renderer::beginGeometryPass();
+		renderer::beginMainPass();
 		
 		glBindVertexArray(Model::vao);
 		modelShader.use();
@@ -133,23 +136,17 @@ int main() {
 		
 		res::shipModel.bind();
 		res::shipModel.drawMesh(res::shipModel.findMesh("Aluminum"), 1);
+		
+		emissiveShader.use();
+		glUniformMatrix4fv(0, 1, false, (const float*)&ship.worldMatrix);
 		res::shipModel.drawMesh(res::shipModel.findMesh("BlueL"), 1);
 		res::shipModel.drawMesh(res::shipModel.findMesh("BlueS"), 1);
 		
-		renderer::beginLightPass();
-		
-		renderer::beginEmissive();
+		drawAsteroids();
 		
 		stars::draw(drawableWidth, drawableHeight);
 		
-		glBindVertexArray(Model::vao);
-		emissiveShader.use();
-		glUniformMatrix4fv(0, 1, false, (const float*)&ship.worldMatrix);
-		res::shipModel.bind();
-		res::shipModel.drawMesh(res::shipModel.findMesh("BlueL"), 1);
-		res::shipModel.drawMesh(res::shipModel.findMesh("BlueS"), 1);
-		
-		renderer::endLightPass();
+		renderer::endMainPass();
 		
 		fences[renderer::frameCycleIndex] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		renderer::frameCycleIndex = (renderer::frameCycleIndex + 1) % renderer::frameCycleLen;

@@ -34,8 +34,8 @@ void Model::destroy() {
 }
 
 void generateTangents(std::span<Vertex> vertices, std::span<const glm::vec3> normals, std::span<const uint32_t> indices) {
-	glm::vec3* tangents1 = (glm::vec3*)std::calloc(1, vertices.size_bytes());
-	glm::vec3* tangents2 = (glm::vec3*)std::calloc(1, vertices.size_bytes());
+	glm::vec3* tangents1 = (glm::vec3*)std::calloc(1, vertices.size() * sizeof(glm::vec3));
+	glm::vec3* tangents2 = (glm::vec3*)std::calloc(1, vertices.size() * sizeof(glm::vec3));
 	for (size_t i = 0; i < indices.size(); i += 3) {
 		const glm::vec3 dp0 = vertices[indices[i + 1]].pos - vertices[indices[i]].pos;
 		const glm::vec3 dp1 = vertices[indices[i + 2]].pos - vertices[indices[i]].pos;

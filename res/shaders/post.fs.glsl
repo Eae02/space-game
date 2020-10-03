@@ -4,6 +4,7 @@ out vec4 color_out;
 
 layout(binding=0) uniform sampler2D texIn;
 layout(binding=1) uniform sampler2D depthSampler;
+layout(binding=2) uniform samplerCube skybox;
 
 const float exposure = 1;
 
@@ -44,7 +45,15 @@ float calcGodRays() {
 }
 
 void main() {
+	vec4 farFrustumVertex = rs.vpMatrixInv * vec4(screenCoord_v * 2 - 1, 1, 1);
+	vec4 nearFrustumVertex = rs.vpMatrixInv * vec4(screenCoord_v * 2 - 1, 0, 1);
+	vec3 eyeVector = farFrustumVertex.xyz / farFrustumVertex.w - nearFrustumVertex.xyz / nearFrustumVertex.w;
+	
 	vec3 color = texture(texIn, screenCoord_v).rgb + calcGodRays() * rs.sunColor;
+	
+	if (texture(depthSampler, screenCoord_v).r == 1) {
+		color += texture(skybox, eyeVector).rgb;
+	}
 	
 	color_out = vec4(vec3(1.0) - exp(-exposure * color), 1.0);
 	

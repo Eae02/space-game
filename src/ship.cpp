@@ -50,7 +50,7 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 	float desiredRollOffset = vel.x * MOVE_LR_MAX_ROLL / MAX_SPEED_LRUP;
 	rollOffset += (desiredRollOffset - rollOffset) * std::min(3 * dt, 1.0f);
 	
-	pos += rotation * (vel * dt);
+	//pos += rotation * (vel * dt);
 	
 	worldMatrix =
 		glm::translate(glm::mat4(1), pos) *

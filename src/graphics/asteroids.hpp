@@ -1,3 +1,5 @@
 #pragma once
 
-void generateAsteroidVariants();
+void initializeAsteroids();
+
+void drawAsteroids();

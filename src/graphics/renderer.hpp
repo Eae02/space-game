@@ -22,13 +22,7 @@ namespace renderer {
 	
 	void updateRenderSettings(const RenderSettings& renderSettings);
 	
-	void beginGeometryPass();
+	void beginMainPass();
 	
-	void beginLightPass();
-	
-	void renderPointLight();
-	
-	void beginEmissive();
-	
-	void endLightPass();
+	void endMainPass();
 }

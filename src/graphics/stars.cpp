@@ -86,8 +86,14 @@ void stars::initialize() {
 }
 
 void stars::draw(int resX, int resY) {
+	glEnable(GL_BLEND);
+	glDepthMask(0);
+	
 	starShader.use();
 	glUniform1f(0, (float)resX / (float)resY);
 	glBindVertexArray(starVao);
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, NUM_STARS);
+	
+	glDisable(GL_BLEND);
+	glDepthMask(1);
 }
