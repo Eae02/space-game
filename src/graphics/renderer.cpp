@@ -28,7 +28,7 @@ namespace renderer {
 	
 	void initialize() {
 		mainPassColorAttachment.format = GL_RGBA16F;
-		mainPassDepthAttachment.format = GL_DEPTH_COMPONENT16;
+		mainPassDepthAttachment.format = GL_DEPTH_COMPONENT32F;
 		
 		postShader.attachStage(GL_VERTEX_SHADER, "fullscreen.vs.glsl");
 		postShader.attachStage(GL_FRAGMENT_SHADER, "post.fs.glsl");

@@ -6,6 +6,8 @@ constexpr float ACCEL_TIME_LRUP = 0.5f;
 constexpr float DEACCEL_TIME_LRUP = 0.5f;
 constexpr float ROLL_SPEED = 0.5f;
 constexpr float PITCH_SPEED = 0.5f;
+constexpr float YAW_SPEED = 0.4f;
+constexpr float YAW_ROLL_SPEED = 0.1f;
 
 constexpr float MOVE_LR_MAX_ROLL = 0.4f;
 
@@ -26,7 +28,7 @@ static inline glm::mat4 makeRotationMatrix(float roll, float pitch) {
 }
 
 void Ship::update(float dt, const InputState& curInput, const InputState& prevInput) {
-	float accelX = calculateAcceleration(dt, (int)curInput.rightKey - (int)curInput.leftKey, vel.x);
+	float accelX = calculateAcceleration(dt, (int)curInput.leftKey - (int)curInput.rightKey, vel.x);
 	float accelY = calculateAcceleration(dt, (int)curInput.upKey - (int)curInput.downKey, vel.y);
 	float accelLen = std::hypot(accelX, accelY);
 	if (accelLen > 1) {
@@ -44,13 +46,20 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 	glm::vec3 pitchAxis = rotation * glm::vec3(1, 0, 0);
 	rotation = glm::angleAxis(accelY * PITCH_SPEED * dt, pitchAxis) * rotation;
 	
-	glm::vec3 rollAxis = rotation * glm::vec3(0, 0, 1);
-	rotation = glm::angleAxis(((int)curInput.rollRightKey - (int)curInput.rollLeftKey) * ROLL_SPEED * dt, rollAxis) * rotation;
+	glm::vec3 yawAxis = rotation * glm::vec3(0, 1, 0);
+	rotation = glm::angleAxis(accelX * YAW_SPEED * dt, yawAxis) * rotation;
 	
-	float desiredRollOffset = vel.x * MOVE_LR_MAX_ROLL / MAX_SPEED_LRUP;
+	glm::vec3 rollAxis = rotation * glm::vec3(0, 0, 1);
+	rotation = glm::angleAxis(
+		accelX * YAW_ROLL_SPEED * dt +
+		((int)curInput.rollRightKey - (int)curInput.rollLeftKey) * ROLL_SPEED * dt
+		, rollAxis) * rotation;
+	
+	float desiredRollOffset = -vel.x * MOVE_LR_MAX_ROLL / MAX_SPEED_LRUP;
 	rollOffset += (desiredRollOffset - rollOffset) * std::min(3 * dt, 1.0f);
 	
-	//pos += rotation * (vel * dt);
+	if (curInput.moreSpeedKey)
+		pos += rotation * (glm::vec3(0, 0, 100) * dt);
 	
 	worldMatrix =
 		glm::translate(glm::mat4(1), pos) *

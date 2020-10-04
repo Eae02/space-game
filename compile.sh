@@ -1,7 +1,7 @@
 #!/bin/bash
 rm -R obj/src/* 2> /dev/null
 
-CFLAGS="--std=c++2a -g -isystem ext/glm -isystem ext -DGLM_FORCE_CTOR_INIT -DDEBUG
+CFLAGS="--std=c++2a -g -isystem ext/glm -isystem ext -DGLM_FORCE_CTOR_INIT -DGLM_ENABLE_EXPERIMENTAL -DDEBUG
  $(pkg-config --cflags sdl2 SDL2_image glew)
  -Wall -Wextra -Wshadow -pedantic -Wfatal-errors -Wno-unused-parameter -Wno-missing-field-initializers"
 

@@ -4,6 +4,7 @@
 #include "input.hpp"
 #include "resources.hpp"
 #include "ship.hpp"
+#include "utils.hpp"
 #include "graphics/asteroids.hpp"
 #include "graphics/model.hpp"
 #include "graphics/shader.hpp"
@@ -65,7 +66,7 @@ int main() {
 	emissiveShader.attachStage(GL_FRAGMENT_SHADER, "emissive.fs.glsl");
 	emissiveShader.link("emissive");
 	
-	const glm::vec3 emissiveColor = 5.0f * glm::convertSRGBToLinear(glm::vec3(0.2f, 0.3f, 2.0f));
+	const glm::vec3 emissiveColor = 5.0f * glm::convertSRGBToLinear(glm::vec3(153, 196, 233) / 255.0f);
 	glProgramUniform3fv(emissiveShader.program, 1, 1, (const float*)&emissiveColor);
 	
 	renderer::initialize();
@@ -83,6 +84,9 @@ int main() {
 	
 	Ship ship;
 	
+	std::array<glm::vec4, 6> frustumPlanes;
+	bool frustumPlanesFrozen = false;
+	
 	bool shouldClose = false;
 	while (!shouldClose) {
 		const uint64_t thisFrameBegin = SDL_GetPerformanceCounter();
@@ -97,8 +101,13 @@ int main() {
 				shouldClose = true;
 			if (event.type == SDL_KEYDOWN)
 				curInput.keyStateChanged(event.key.keysym.scancode, true);
-			if (event.type == SDL_KEYUP)
+			if (event.type == SDL_KEYUP) {
 				curInput.keyStateChanged(event.key.keysym.scancode, false);
+#ifdef DEBUG
+				if (event.key.keysym.scancode == SDL_SCANCODE_F8)
+					frustumPlanesFrozen = !frustumPlanesFrozen;
+#endif
+			}
 		}
 		
 		ship.update(dt, curInput, prevInput);
@@ -116,13 +125,20 @@ int main() {
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		
 		RenderSettings renderSettings;
-		renderSettings.vpMatrix = glm::perspectiveFov(glm::radians(75.0f), (float)drawableWidth, (float)drawableHeight, 0.1f, 1000.0f) * ship.viewMatrix;
+		renderSettings.vpMatrix = glm::perspectiveFov(glm::radians(75.0f), (float)drawableWidth, (float)drawableHeight, 0.1f, 5000.0f) * ship.viewMatrix;
 		renderSettings.vpMatrixInverse = glm::inverse(renderSettings.vpMatrix);
 		renderSettings.cameraPos = glm::vec3(ship.viewMatrixInv[3]);
 		renderSettings.gameTime = currentTime;
 		renderSettings.sunColor = { 1, 0.9f, 0.95f };
 		renderSettings.sunDir = glm::normalize(glm::vec3(1, -1, 1));
 		renderer::updateRenderSettings(renderSettings);
+		
+		if (!frustumPlanesFrozen) {
+			frustumPlanes = createFrustumPlanes(renderSettings.vpMatrixInverse);
+		}
+		
+		std::array<glm::vec4, 6> frustumPlanesShadow = createFrustumPlanes(renderSettings.vpMatrixInverse);
+		prepareAsteroids(renderSettings.cameraPos, frustumPlanes.data(), frustumPlanesShadow.data());
 		
 		renderer::beginMainPass();
 		

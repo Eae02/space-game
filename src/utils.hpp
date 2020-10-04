@@ -1,5 +1,7 @@
 #pragma once
 
+#include <random>
+
 template <typename T, typename U>
 constexpr inline auto roundToNextMul(T value, U multiple) {
 	auto valModMul = value % multiple;
@@ -13,6 +15,10 @@ inline uint32_t packVec3(const glm::vec3& vec) {
 	}
 	return ret;
 }
+
+glm::vec3 randomDirection(std::mt19937& rng);
+
+std::array<glm::vec4, 6> createFrustumPlanes(const glm::mat4& inverseViewProj);
 
 struct PairIntIntHash {
 	size_t operator()(const std::pair<int, int>& p) const {

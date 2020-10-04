@@ -29,13 +29,18 @@ static void loadShaderCode(std::ostringstream& sourceStream, std::string_view fi
 		std::abort();
 	}
 	
+	sourceStream << "#line 1\n";
+	
+	int lineNumber = 1;
 	std::string line;
 	while (std::getline(fileStream, line)) {
 		if (line.starts_with("#include ")) {
 			loadShaderCode(sourceStream, line.substr(line.find(' ') + 1));
+			sourceStream << "#line " << (lineNumber + 1) << "\n";
 		} else {
 			sourceStream << line << '\n';
 		}
+		lineNumber++;
 	}
 }
 
@@ -66,4 +71,13 @@ void Shader::link(const char* label) {
 	checkShaderStatus(label, program, GL_LINK_STATUS, glGetProgramiv, glGetProgramInfoLog);
 	
 	glObjectLabel(GL_PROGRAM, program, 0, label);
+}
+
+GLuint Shader::findUniform(const char* name) const {
+	int location = glGetUniformLocation(program, name);
+	if (location < 0) {
+		std::cerr << "uniform not found: " << name << std::endl;
+		std::abort();
+	}
+	return location;
 }

@@ -1,5 +1,6 @@
 #include "stars.hpp"
 #include "shader.hpp"
+#include "../utils.hpp"
 
 #include <random>
 
@@ -26,8 +27,6 @@ static constexpr size_t NUM_STARS = 2000;
 
 static void generateStars(Star* stars) {
 	std::mt19937 rand;
-	std::uniform_real_distribution<float> thetaDist(0, M_PI * 2);
-	std::uniform_real_distribution<float> pitchDist(-1.0f, 1.0f);
 	
 	std::uniform_real_distribution<float> intensityDist(0.1f, 2.0f);
 	std::uniform_real_distribution<float> distanceDist(300000, 1000000);
@@ -38,11 +37,7 @@ static void generateStars(Star* stars) {
 	const float colorPow = 3.0f;
 	
 	for (size_t i = 0; i < NUM_STARS; i++) {
-		const float theta = thetaDist(rand);
-		const float cosPitch = pitchDist(rand);
-		const float sinPitch = std::sin(std::acos(cosPitch));
-		
-		stars[i].dir = glm::vec3(std::cos(theta) * sinPitch, std::sin(theta) * sinPitch, cosPitch);
+		stars[i].dir = randomDirection(rand);
 		stars[i].color = glm::pow(glm::mix(colorR, colorB, colorFadeDist(rand)), glm::vec3(colorPow)) * intensityDist(rand);
 		stars[i].distance = distanceDist(rand);
 	}

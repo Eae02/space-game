@@ -1,16 +1,26 @@
+#extension ARB_shader_draw_parameters : require
+
 layout(location=0) in vec3 position_in;
 layout(location=1) in vec3 normal_in;
-//layout(location=2) in mat4 worldTransform_in;
 
 #include rendersettings.glh
 
 out vec3 normal_v;
 out vec3 worldPos_v;
+out vec3 texPos_v;
+flat out int drawIndex_v;
 
-layout(location=0) uniform mat4 worldTransform_in;
+const float textureScale = 0.4;
+
+layout(binding=0, std430) readonly buffer AsteroidTransformsBuf {
+	mat4 asteroidTransforms[];
+};
 
 void main() {
-	worldPos_v = (worldTransform_in * vec4(position_in, 1)).xyz;
-	normal_v = (worldTransform_in * vec4(normal_in, 0)).xyz;
+	drawIndex_v = gl_DrawIDARB;
+	mat4 worldTransform = asteroidTransforms[gl_DrawIDARB];
+	texPos_v = position_in * length(worldTransform[0]) * textureScale;
+	worldPos_v = (worldTransform * vec4(position_in, 1)).xyz;
+	normal_v = normal_in;
 	gl_Position = rs.vpMatrix * vec4(worldPos_v, 1);
 }

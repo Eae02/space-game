@@ -44,6 +44,8 @@ float calcGodRays() {
 	return light * grBrightness;
 }
 
+const vec3 SKY_COLOR = vec3(0.242281139, 0.617206633, 0.830769956);
+
 void main() {
 	vec4 farFrustumVertex = rs.vpMatrixInv * vec4(screenCoord_v * 2 - 1, 1, 1);
 	vec4 nearFrustumVertex = rs.vpMatrixInv * vec4(screenCoord_v * 2 - 1, 0, 1);
@@ -52,7 +54,7 @@ void main() {
 	vec3 color = texture(texIn, screenCoord_v).rgb + calcGodRays() * rs.sunColor;
 	
 	if (texture(depthSampler, screenCoord_v).r == 1) {
-		color += texture(skybox, eyeVector).rgb;
+		color += SKY_COLOR;//texture(skybox, eyeVector).rgb;
 	}
 	
 	color_out = vec4(vec3(1.0) - exp(-exposure * color), 1.0);

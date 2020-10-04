@@ -7,6 +7,7 @@ struct InputState {
 	bool downKey      = false;
 	bool rollLeftKey  = false;
 	bool rollRightKey = false;
+	bool moreSpeedKey = false;
 	
 	void keyStateChanged(int scancode, bool newState);
 };
