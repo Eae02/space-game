@@ -3,6 +3,7 @@
 struct RenderSettings {
 	glm::mat4 vpMatrix;
 	glm::mat4 vpMatrixInverse;
+	glm::mat4 shadowMatrix;
 	glm::vec3 cameraPos;
 	float     gameTime;
 	glm::vec3 sunColor;

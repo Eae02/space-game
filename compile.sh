@@ -1,7 +1,10 @@
 #!/bin/bash
 rm -R obj/src/* 2> /dev/null
 
-CFLAGS="--std=c++2a -g -isystem ext/glm -isystem ext -DGLM_FORCE_CTOR_INIT -DGLM_ENABLE_EXPERIMENTAL -DDEBUG
+CFLAGS_DBG="-g -DDEBUG"
+CFLAGS_REL="-Ofast"
+
+CFLAGS="$CFLAGS_DBG --std=c++2a -isystem ext/glm -isystem ext -DGLM_FORCE_CTOR_INIT -DGLM_ENABLE_EXPERIMENTAL
  $(pkg-config --cflags sdl2 SDL2_image glew)
  -Wall -Wextra -Wshadow -pedantic -Wfatal-errors -Wno-unused-parameter -Wno-missing-field-initializers"
 
@@ -20,10 +23,13 @@ if [ ! -d obj/ext ]; then
 fi
 
 echo "compiling..."
-for f in $(find src -name "*.cpp"); do
+for f in $(find src -name "*.cpp" -not -path "*asteroids_gen.cpp"); do
 	mkdir -p obj/$(dirname $f)
 	g++ $f $CFLAGS -include pch.hpp -c -o obj/$f.o &
 done
+
+g++ src/graphics/asteroids_gen.cpp $CFLAGS -include pch.hpp -O2 -g0 -c -o obj/src/graphics/asteroids_gen.cpp.o &
+
 wait
 
 echo "linking..."

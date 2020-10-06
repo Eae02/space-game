@@ -83,6 +83,7 @@ namespace renderer {
 	
 	void beginMainPass() {
 		glBindFramebuffer(GL_FRAMEBUFFER, mainPassFbo);
+		glViewport(0, 0, fbWidth, fbHeight);
 		
 		glDepthMask(1);
 		glEnable(GL_DEPTH_TEST);

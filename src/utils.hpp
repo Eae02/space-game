@@ -2,6 +2,9 @@
 
 #include <random>
 
+constexpr float Z_NEAR = 0.1f;
+constexpr float Z_FAR = 5000.0f;
+
 template <typename T, typename U>
 constexpr inline auto roundToNextMul(T value, U multiple) {
 	auto valModMul = value % multiple;
@@ -17,6 +20,8 @@ inline uint32_t packVec3(const glm::vec3& vec) {
 }
 
 glm::vec3 randomDirection(std::mt19937& rng);
+
+void unprojectFrustumCorners(const glm::mat4& inverseViewProj, glm::vec3* cornersOut);
 
 std::array<glm::vec4, 6> createFrustumPlanes(const glm::mat4& inverseViewProj);
 

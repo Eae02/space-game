@@ -1,6 +1,7 @@
 layout(binding=0, std140) uniform RenderSettings {
 	mat4 vpMatrix;
 	mat4 vpMatrixInv;
+	mat4 shadowMatrix;
 	vec3 cameraPos;
 	float gameTime;
 	vec3 sunColor;

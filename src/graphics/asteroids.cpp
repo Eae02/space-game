@@ -67,11 +67,6 @@ struct AsteroidVertex {
 	uint32_t normal;
 };
 
-struct AsteroidVariant {
-	uint32_t firstLodFirstVertex;
-	float size;
-};
-
 static inline void calculateNormals(std::span<AsteroidVertex> vertices, std::span<const glm::uvec3> triangles) {
 	glm::vec3* normals = (glm::vec3*)std::calloc(1, vertices.size() * sizeof(glm::vec3));
 	for (const glm::ivec3& triangle : triangles) {
@@ -120,8 +115,6 @@ AsteroidVariant generateSingleAsteroidVariant(std::mt19937& rng, std::vector<Ast
 	
 	variant.size = size;
 	
-	constexpr float MAIN_NOISE_WEIGHT = 2.0f;
-	
 	for (uint32_t lod = 0; lod < NUM_LOD_LEVELS; lod++) {
 		size_t firstVertex = vertices.size();
 		
@@ -156,7 +149,6 @@ static GLuint asteroidVao;
 static GLuint asteroidVertexBuffer;
 static GLuint asteroidIndexBuffer;
 
-static constexpr float ASTEROID_BOX_SIZE = 4000;
 static constexpr float DISTANCE_PER_LOD = ASTEROID_BOX_SIZE / (2 * NUM_LOD_LEVELS);
 
 static GLuint asteroidsSettingsBuffer;
@@ -169,6 +161,7 @@ static uint32_t lodLevelVertexOffset[NUM_LOD_LEVELS];
 
 static Shader asteroidComputeShader;
 static Shader asteroidShader;
+static Shader asteroidShadowShader;
 
 struct {
 	GLuint wrappingOffset;
@@ -177,94 +170,44 @@ struct {
 	GLuint frustumPlanesShadow;
 } uniformLocs;
 
-constexpr size_t MAX_ASTEROIDS = 500000;
+static uint32_t numAsteroids = 0;
 
-std::vector<AsteroidSettings> generateAsteroids(std::mt19937& rng) {
-	constexpr float SPACING = 20;
-	constexpr float MAX_SIZE = 30;
-	constexpr float MAX_DIST_CHECK = SPACING + MAX_SIZE;
+static void loadAsteroidShaders() {
+	asteroidShader.attachStage(GL_VERTEX_SHADER, "asteroid.vs.glsl");
+	asteroidShader.attachStage(GL_FRAGMENT_SHADER, "asteroid.fs.glsl");
+	asteroidShader.link("asteroids");
 	
-	struct ActiveSetEntry {
-		glm::vec3 pos;
-		float radius;
-		uint32_t variant;
-		int remAttempts;
-	};
-	std::vector<ActiveSetEntry> activeSet;
+	asteroidShadowShader.attachStage(GL_VERTEX_SHADER, "asteroid_shadow.vs.glsl");
+	asteroidShadowShader.link("asteroids_shadow");
 	
-	std::uniform_int_distribution<int> variantDist(0, (int)NUM_VARIANTS - 1);
+	asteroidComputeShader.attachStage(GL_COMPUTE_SHADER, "asteroids.cs.glsl");
+	asteroidComputeShader.link("asteroids_compute");
 	
-	constexpr int CELL_SIZE = 10;
-	constexpr int NUM_CELLS = ASTEROID_BOX_SIZE / CELL_SIZE;
-	struct CellData {
-		int data[NUM_CELLS][NUM_CELLS][NUM_CELLS];
-	};
-	CellData* cellData = new CellData;
-	memset(cellData->data, -1, sizeof(CellData::data));
-	
-	std::vector<AsteroidSettings> settings;
-	auto addAsteroid = [&] (const glm::vec3& pos, uint32_t variant) -> bool {
-		if (pos.x < 0 || pos.y < 0 || pos.z < 0 || pos.x >= ASTEROID_BOX_SIZE || pos.y >= ASTEROID_BOX_SIZE || pos.z >= ASTEROID_BOX_SIZE)
-			return false;
-		
-		float thisVarRadius = asteroidVariants[variant].size;
-		glm::ivec3 loCheckCell(glm::floor((pos - thisVarRadius - MAX_DIST_CHECK) / (float)CELL_SIZE));
-		glm::ivec3 hiCheckCell(glm::ceil((pos + thisVarRadius + MAX_DIST_CHECK) / (float)CELL_SIZE));
-		loCheckCell = glm::clamp(loCheckCell, glm::ivec3(0), glm::ivec3(NUM_CELLS - 1));
-		hiCheckCell = glm::clamp(hiCheckCell, glm::ivec3(0), glm::ivec3(NUM_CELLS - 1));
-		for (int x = loCheckCell.x; x <= hiCheckCell.x; x++) {
-			for (int y = loCheckCell.y; y <= hiCheckCell.y; y++) {
-				for (int z = loCheckCell.z; z <= hiCheckCell.z; z++) {
-					if (cellData->data[x][y][z] != -1) {
-						const AsteroidSettings& stThere = settings[cellData->data[x][y][z]];
-						float maxRad = stThere.scale + thisVarRadius + SPACING;
-						if (glm::distance2(pos, stThere.pos) < maxRad * maxRad) {
-							return false;
-						}
-					}
-				}
-			}
-		}
-		
-		glm::ivec3 cellPos = glm::min(glm::ivec3(glm::floor(pos / (float)CELL_SIZE)), glm::ivec3(NUM_CELLS - 1));
-		cellData->data[cellPos.x][cellPos.y][cellPos.z] = settings.size();
-		
-		constexpr int MAX_ATTEMPTS = 8;
-		activeSet.push_back({ pos, asteroidVariants[variant].size, variant, MAX_ATTEMPTS });
-		
-		AsteroidSettings& st = settings.emplace_back();
-		st.firstVertex = asteroidVariants[variant].firstLodFirstVertex;
-		st.scale = asteroidVariants[variant].size;
-		st.initialRotation = std::uniform_real_distribution<float>(0, (float)M_PI * 2)(rng);
-		st.rotationSpeed = std::uniform_real_distribution<float>(0.1f, 0.3f)(rng);
-		st.rotationAxis = glm::packSnorm4x8(glm::vec4(randomDirection(rng), 0.0f));
-		st.pos = pos;
-		
-		return true;
-	};
-	
-	uint32_t firstVariant = variantDist(rng);
-	float firstRadius = asteroidVariants[firstVariant].size;
-	std::uniform_real_distribution<float> startDist(firstRadius, ASTEROID_BOX_SIZE - firstRadius);
-	addAsteroid(glm::vec3(startDist(rng), startDist(rng), startDist(rng)), firstVariant);
-	
-	while (!activeSet.empty() && settings.size() < MAX_ASTEROIDS) {
-		uint32_t variant = variantDist(rng);
-		size_t idx = std::uniform_int_distribution<size_t>(0, activeSet.size() - 1)(rng);
-		glm::vec3 pos = activeSet[idx].pos + randomDirection(rng) * (activeSet[idx].radius + SPACING + asteroidVariants[variant].size);
-		addAsteroid(pos, variant);
-		
-		activeSet[idx].remAttempts--;
-		if (activeSet[idx].remAttempts == 0) {
-			activeSet[idx] = activeSet.back();
-			activeSet.pop_back();
-		}
+	uint32_t lodNumIndices[NUM_LOD_LEVELS];
+	for (uint32_t i = 0; i < NUM_LOD_LEVELS; i++) {
+		lodNumIndices[i] = sphereTriangles[i].size() * 3;
 	}
 	
-	return settings;
+	glProgramUniform1uiv(asteroidComputeShader.program,
+		asteroidComputeShader.findUniform("lodVertexOffsets"), NUM_LOD_LEVELS, lodLevelVertexOffset);
+	glProgramUniform1uiv(asteroidComputeShader.program,
+		asteroidComputeShader.findUniform("lodFirstIndex"), NUM_LOD_LEVELS, lodLevelFirstIndex);
+	glProgramUniform1uiv(asteroidComputeShader.program,
+		asteroidComputeShader.findUniform("lodNumIndices"), NUM_LOD_LEVELS, lodNumIndices);
+	glProgramUniform1f(asteroidComputeShader.program,
+		asteroidComputeShader.findUniform("distancePerLod"), DISTANCE_PER_LOD);
+	glProgramUniform1f(asteroidComputeShader.program,
+		asteroidComputeShader.findUniform("wrappingModulo"), ASTEROID_BOX_SIZE);
+	glProgramUniform1ui(asteroidComputeShader.program,
+		asteroidComputeShader.findUniform("numAsteroids"), numAsteroids);
+	
+	uniformLocs.wrappingOffset = asteroidComputeShader.findUniform("wrappingOffset");
+	uniformLocs.globalOffset = asteroidComputeShader.findUniform("globalOffset");
+	uniformLocs.frustumPlanes = asteroidComputeShader.findUniform("frustumPlanes");
+	uniformLocs.frustumPlanesShadow = asteroidComputeShader.findUniform("frustumPlanesShadow");
 }
 
-static uint32_t numAsteroids = 0;
+std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(std::mt19937& rng, std::span<const AsteroidVariant> variants);
 
 void initializeAsteroids() {
 	sphereVertices[0] = std::vector<glm::vec3>(std::begin(baseSphereVertices), std::end(baseSphereVertices));
@@ -295,7 +238,7 @@ void initializeAsteroids() {
 	std::vector<AsteroidVertex> asteroidVertices;
 	
 #ifdef DEBUG
-	auto startTime = std::chrono::high_resolution_clock::now();
+	auto varGenStartTime = std::chrono::high_resolution_clock::now();
 #endif
 	
 	std::mt19937 rng(42);
@@ -304,12 +247,12 @@ void initializeAsteroids() {
 	}
 	
 #ifdef DEBUG
-	auto endTime = std::chrono::high_resolution_clock::now();
-	double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() / 1000.0;
+	auto varGenEndTime = std::chrono::high_resolution_clock::now();
+	double varGenElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(varGenEndTime - varGenStartTime).count() / 1000.0;
 	
 	std::cout << "all asteroids use " << asteroidVertices.size() << " vertices and " << asteroidIndices.size() << " indices, "
 		"the highest lod uses " << sphereTriangles[NUM_LOD_LEVELS - 1].size() << " triangles, "
-		"variant generation took " << std::setprecision(3) << elapsed << "s" << std::endl;
+		"variant generation took " << std::setprecision(3) << varGenElapsed << "s" << std::endl;
 #endif
 	
 	glCreateBuffers(1, &asteroidVertexBuffer);
@@ -329,14 +272,32 @@ void initializeAsteroids() {
 	glVertexArrayVertexBuffer(asteroidVao, 0, asteroidVertexBuffer, 0, sizeof(AsteroidVertex));
 	glVertexArrayElementBuffer(asteroidVao, asteroidIndexBuffer);
 	
-	std::vector<AsteroidSettings> asteroidSettings = generateAsteroids(rng);
+#ifdef DEBUG
+	auto placeGenStartTime = std::chrono::high_resolution_clock::now();
+#endif
+	
+	std::vector<std::pair<glm::vec3, uint32_t>> generatedAsteroids = generateAsteroids(rng, asteroidVariants);
+	std::vector<AsteroidSettings> asteroidSettings(generatedAsteroids.size());
+	for (size_t i = 0; i < generatedAsteroids.size(); i++) {
+		auto [pos, variant] = generatedAsteroids[i];
+		AsteroidSettings& st = asteroidSettings.emplace_back();
+		st.firstVertex = asteroidVariants[variant].firstLodFirstVertex;
+		st.scale = asteroidVariants[variant].size;
+		st.initialRotation = std::uniform_real_distribution<float>(0, (float)M_PI * 2)(rng);
+		st.rotationSpeed = std::uniform_real_distribution<float>(0.1f, 0.3f)(rng);
+		st.rotationAxis = glm::packSnorm4x8(glm::vec4(randomDirection(rng), 0.0f));
+		st.pos = pos;
+	}
+	
+#ifdef DEBUG
+	auto placeGenEndTime = std::chrono::high_resolution_clock::now();
+	double placeGenElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(placeGenEndTime - placeGenStartTime).count() / 1000.0;
+	std::cout << "generated " << asteroidSettings.size() << " asteroids in " << placeGenElapsed << "s" << std::endl;
+#endif
 	
 	glCreateBuffers(1, &asteroidsSettingsBuffer);
 	glNamedBufferStorage(asteroidsSettingsBuffer, sizeof(AsteroidSettings) * asteroidSettings.size(), asteroidSettings.data(), 0);
 	numAsteroids = asteroidSettings.size();
-#ifdef DEBUG
-	std::cout << "generated " << numAsteroids << " asteroids" << std::endl;
-#endif
 	
 	glCreateBuffers(1, &asteroidsMatrixBuffer);
 	glNamedBufferStorage(asteroidsMatrixBuffer, sizeof(glm::mat4) * numAsteroids, nullptr, 0);
@@ -347,35 +308,7 @@ void initializeAsteroids() {
 	glCreateBuffers(1, &asteroidsDrawShadowDataBuffer);
 	glNamedBufferStorage(asteroidsDrawShadowDataBuffer, DRAW_DATA_BYTES, nullptr, 0);
 	
-	asteroidShader.attachStage(GL_VERTEX_SHADER, "asteroid.vs.glsl");
-	asteroidShader.attachStage(GL_FRAGMENT_SHADER, "asteroid.fs.glsl");
-	asteroidShader.link("asteroids");
-	
-	asteroidComputeShader.attachStage(GL_COMPUTE_SHADER, "asteroids.cs.glsl");
-	asteroidComputeShader.link("asteroids_compute");
-	
-	uint32_t lodNumIndices[NUM_LOD_LEVELS];
-	for (uint32_t i = 0; i < NUM_LOD_LEVELS; i++) {
-		lodNumIndices[i] = sphereTriangles[i].size() * 3;
-	}
-	
-	glProgramUniform1uiv(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("lodVertexOffsets"), NUM_LOD_LEVELS, lodLevelVertexOffset);
-	glProgramUniform1uiv(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("lodFirstIndex"), NUM_LOD_LEVELS, lodLevelFirstIndex);
-	glProgramUniform1uiv(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("lodNumIndices"), NUM_LOD_LEVELS, lodNumIndices);
-	glProgramUniform1f(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("distancePerLod"), DISTANCE_PER_LOD);
-	glProgramUniform1f(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("wrappingModulo"), ASTEROID_BOX_SIZE);
-	glProgramUniform1ui(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("numAsteroids"), numAsteroids);
-	
-	uniformLocs.wrappingOffset = asteroidComputeShader.findUniform("wrappingOffset");
-	uniformLocs.globalOffset = asteroidComputeShader.findUniform("globalOffset");
-	uniformLocs.frustumPlanes = asteroidComputeShader.findUniform("frustumPlanes");
-	uniformLocs.frustumPlanesShadow = asteroidComputeShader.findUniform("frustumPlanesShadow");
+	loadAsteroidShaders();
 }
 
 void prepareAsteroids(const glm::vec3& cameraPos, const glm::vec4 frustumPlanes[6], const glm::vec4 frustumPlanesShadow[4]) {
@@ -404,20 +337,37 @@ void prepareAsteroids(const glm::vec3& cameraPos, const glm::vec4 frustumPlanes[
 	glDispatchCompute((numAsteroids + COMPUTE_SHADER_LOCAL_SIZE_X - 1) / COMPUTE_SHADER_LOCAL_SIZE_X, 1, 1);
 }
 
-void drawAsteroids() {
-	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, asteroidsDrawDataBuffer);
-	glMemoryBarrier(GL_COMMAND_BARRIER_BIT |  GL_SHADER_STORAGE_BARRIER_BIT);
-	
+void drawAsteroidsShadow() {
 	glBindVertexArray(asteroidVao);
-	asteroidShader.use();
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	asteroidShadowShader.use();
+	
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, asteroidsDrawShadowDataBuffer);
 	
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, asteroidsMatrixBuffer);
+	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+	
+	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_SHORT, nullptr, numAsteroids, sizeof(uint32_t) * 5);
+}
+
+void drawAsteroids(bool wireframe) {
+	glBindVertexArray(asteroidVao);
+	asteroidShader.use();
+	
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, asteroidsDrawDataBuffer);
+	
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+	
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, asteroidsMatrixBuffer);
+	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 	
 	res::asteroidAlbedo.bind(0);
 	res::asteroidNormals.bind(1);
 	
 	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_SHORT, nullptr, numAsteroids, sizeof(uint32_t) * 5);
 	
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	if (wireframe) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
 }

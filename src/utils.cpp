@@ -23,28 +23,27 @@ static inline glm::vec4 createFrustumPlane(const glm::vec3& p1, const glm::vec3&
 	return glm::vec4(normal, -glm::dot(p1, normal));
 }
 
+void unprojectFrustumCorners(const glm::mat4& inverseViewProj, glm::vec3* cornersOut) {
+	cornersOut[0] = { -1,  1, 0 };
+	cornersOut[1] = {  1,  1, 0 };
+	cornersOut[2] = {  1, -1, 0 };
+	cornersOut[3] = { -1, -1, 0 };
+	cornersOut[4] = { -1,  1, 1 };
+	cornersOut[5] = {  1,  1, 1 };
+	cornersOut[6] = {  1, -1, 1 };
+	cornersOut[7] = { -1, -1, 1 };
+	
+	for (size_t i = 0; i < 8; i++) {
+		glm::vec4 cornerV4 = inverseViewProj * glm::vec4(cornersOut[i], 1);
+		cornersOut[i] = glm::vec3(cornerV4.x, cornerV4.y, cornerV4.z) / cornerV4.w;
+	}
+}
+
 std::array<glm::vec4, 6> createFrustumPlanes(const glm::mat4& inverseViewProj) {
-	//The corners of the frustum in post-projection space
-	glm::vec3 corners[8] = 
-	{
-		{ -1,  1, 0 },
-		{  1,  1, 0 },
-		{  1, -1, 0 },
-		{ -1, -1, 0 },
-		{ -1,  1, 1 },
-		{  1,  1, 1 },
-		{  1, -1, 1 },
-		{ -1, -1, 1 }
-	};
-	
+	glm::vec3 corners[8];
+	unprojectFrustumCorners(inverseViewProj, corners);
 	glm::vec3 frustumCenter;
-	
-	//Transforms the corners into world space and finds the center of the frustum
-	for (glm::vec3& corner : corners)
-	{
-		glm::vec4 cornerV4 = inverseViewProj * glm::vec4(corner, 1);
-		corner = glm::vec3(cornerV4.x, cornerV4.y, cornerV4.z) / cornerV4.w;
-		
+	for (glm::vec3& corner : corners) {
 		frustumCenter += corner;
 	}
 	
