@@ -42,6 +42,8 @@ int main() {
 		return 1;
 	}
 	
+	SDL_GL_SetSwapInterval(0);
+	
 	GLenum glewInitStatus = glewInit();
 	if (glewInitStatus != GLEW_OK) {
 		std::cerr << glewGetErrorString(glewInitStatus) << std::endl;
@@ -106,6 +108,7 @@ int main() {
 	InputState curInput, prevInput;
 	
 	Ship ship;
+	ship.pos.y += ASTEROID_BOX_HEIGHT * 0.9f;
 	
 	glm::mat4 projMatrix, inverseProjMatrix;
 	int prevDrawableWidth = -1, prevDrawableHeight = -1;
@@ -114,6 +117,12 @@ int main() {
 	bool frustumPlanesFrozen = false;
 	bool drawAsteroidsWireframe = false;
 	
+	glm::vec3 sunDir = glm::normalize(glm::vec3(0.5f, -1, -0.8f));
+	
+	constexpr float TIME_PER_FPS_PRINT = 3;
+	float timeAtLastFpsPrint = SDL_GetPerformanceCounter() / perfCounterFrequency;
+	uint32_t numFrames = 0;
+	
 	bool shouldClose = false;
 	while (!shouldClose) {
 		const uint64_t thisFrameBegin = SDL_GetPerformanceCounter();
@@ -121,6 +130,12 @@ int main() {
 		const float dt = (thisFrameBegin - lastFrameBegin) / (float)perfCounterFrequency;
 		lastFrameBegin = thisFrameBegin;
 		prevInput = curInput;
+		
+		if (currentTime - timeAtLastFpsPrint > TIME_PER_FPS_PRINT) {
+			std::cout << "avg fps: " << (numFrames / (currentTime - timeAtLastFpsPrint)) << std::endl;
+			timeAtLastFpsPrint = currentTime;
+			numFrames = 0;
+		}
 		
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
@@ -155,36 +170,35 @@ int main() {
 			inverseProjMatrix = glm::inverse(projMatrix);
 		}
 		
+		glm::mat4 vpMatrixInv = ship.viewMatrixInv * inverseProjMatrix;
+		ShadowMapMatrices shadowMapMatrices = calculateShadowMapMatrices(vpMatrixInv, sunDir);
+		
 		RenderSettings renderSettings;
 		renderSettings.vpMatrix = projMatrix * ship.viewMatrix;
-		renderSettings.vpMatrixInverse = ship.viewMatrixInv * inverseProjMatrix;
+		renderSettings.vpMatrixInverse = vpMatrixInv;
 		renderSettings.cameraPos = glm::vec3(ship.viewMatrixInv[3]);
 		renderSettings.gameTime = currentTime;
 		renderSettings.sunColor = { 1, 0.9f, 0.95f };
-		renderSettings.sunDir = glm::normalize(glm::vec3(1, -1, 1));
-		renderSettings.shadowMatrix = calculateShadowMapMatrix(renderSettings.vpMatrixInverse, renderSettings.sunDir);
+		renderSettings.sunDir = sunDir;
+		std::copy_n(shadowMapMatrices.matrices, NUM_SHADOW_CASCADES, renderSettings.shadowMatrices);
 		renderer::updateRenderSettings(renderSettings);
 		
 		if (!frustumPlanesFrozen) {
-			frustumPlanes = createFrustumPlanes(renderSettings.vpMatrixInverse);
+			frustumPlanes = createFrustumPlanes(vpMatrixInv);
 		}
 		
-		std::array<glm::vec4, 6> frustumPlanesShadow = createFrustumPlanes(glm::inverse(renderSettings.shadowMatrix));
-		prepareAsteroids(renderSettings.cameraPos, frustumPlanes.data(), frustumPlanesShadow.data());
+		prepareAsteroids(renderSettings.cameraPos, frustumPlanes.data(), shadowMapMatrices.frustumPlanes);
 		
-		beginRenderShadows();
-		
-		glCullFace(GL_FRONT);
-		
-		//glBindVertexArray(Model::vao);
-		//modelShaderShadow.use();
-		//glUniformMatrix4fv(0, 1, false, (const float*)&ship.worldMatrix);
-		//res::shipModel.bind();
-		//res::shipModel.drawMesh(res::shipModel.findMesh("Aluminum"), 1);
-		
-		drawAsteroidsShadow();
-		
-		glCullFace(GL_BACK);
+		renderShadows([&] (uint32_t cascade) {
+			glBindVertexArray(Model::vao);
+			modelShaderShadow.use();
+			glm::mat4 shadowWorldMatrix = shadowMapMatrices.matrices[cascade] * ship.worldMatrix;
+			glUniformMatrix4fv(0, 1, false, (const float*)&shadowWorldMatrix);
+			res::shipModel.bind();
+			res::shipModel.drawMesh(res::shipModel.findMesh("Aluminum"), 1);
+			
+			drawAsteroidsShadow(cascade, shadowMapMatrices.matrices[cascade]);
+		});
 		
 		renderer::beginMainPass();
 		
@@ -215,6 +229,8 @@ int main() {
 		renderer::frameCycleIndex = (renderer::frameCycleIndex + 1) % renderer::frameCycleLen;
 		
 		SDL_GL_SwapWindow(window);
+		
+		numFrames++;
 	}
 	
 	res::destroy();

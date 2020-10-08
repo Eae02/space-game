@@ -1,5 +1,4 @@
 #include rendersettings.glh
-#include lighting.glh
 
 in vec3 worldPos_v;
 in vec2 texcoord_v;
@@ -10,6 +9,9 @@ out vec4 color_out;
 
 layout(binding=0) uniform sampler2D diffuseMapAndAO;
 layout(binding=1) uniform sampler2D normalMapAndSpecular;
+layout(binding=2) uniform sampler2DArrayShadow shadowMap;
+
+#include lighting.glh
 
 layout(location=1) uniform vec3 specSettings;
 

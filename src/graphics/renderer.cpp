@@ -105,6 +105,7 @@ namespace renderer {
 		mainPassColorAttachment.bind(0);
 		mainPassDepthAttachment.bind(1);
 		glBindTextureUnit(2, skyboxTexture);
+		glBindTextureUnit(3, shadowMap);
 		
 		glEnable(GL_FRAMEBUFFER_SRGB);
 		glDrawArrays(GL_TRIANGLES, 0, 3);

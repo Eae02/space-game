@@ -1,9 +1,11 @@
 #pragma once
 
+#include "shadows.hpp"
+
 struct RenderSettings {
 	glm::mat4 vpMatrix;
 	glm::mat4 vpMatrixInverse;
-	glm::mat4 shadowMatrix;
+	glm::mat4 shadowMatrices[NUM_SHADOW_CASCADES];
 	glm::vec3 cameraPos;
 	float     gameTime;
 	glm::vec3 sunColor;

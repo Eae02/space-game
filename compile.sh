@@ -28,7 +28,7 @@ for f in $(find src -name "*.cpp" -not -path "*asteroids_gen.cpp"); do
 	g++ $f $CFLAGS -include pch.hpp -c -o obj/$f.o &
 done
 
-g++ src/graphics/asteroids_gen.cpp $CFLAGS -include pch.hpp -O2 -g0 -c -o obj/src/graphics/asteroids_gen.cpp.o &
+g++ src/graphics/asteroids_gen.cpp $CFLAGS -include pch.hpp -O2 -g -c -o obj/src/graphics/asteroids_gen.cpp.o &
 
 wait
 

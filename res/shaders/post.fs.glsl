@@ -5,10 +5,12 @@ out vec4 color_out;
 layout(binding=0) uniform sampler2D texIn;
 layout(binding=1) uniform sampler2D depthSampler;
 layout(binding=2) uniform samplerCube skybox;
+layout(binding=3) uniform sampler2DArrayShadow shadowMap;
 
 const float exposure = 1;
 
 #include rendersettings.glh
+#include lighting.glh
 
 const uint grSampleCount = 64;
 const float grLightDecay = pow(0.00004, 1.0 / float(grSampleCount));
@@ -44,7 +46,19 @@ float calcGodRays() {
 	return light * grBrightness;
 }
 
+vec3 worldPosFromDepth(float depthH) {
+	vec4 h = vec4(screenCoord_v * 2 - 1, depthH * 2 - 1, 1);
+	vec4 d = rs.vpMatrixInv * h;
+	return d.xyz / d.w;
+}
+
 const vec3 SKY_COLOR = vec3(0.242281139, 0.617206633, 0.830769956);
+const float FOG_DENSITY = 0.0003;
+const float FOG_START = 200;
+
+float fog(float dist) {
+	return exp(-max(dist - FOG_START, 0.0) * FOG_DENSITY);
+}
 
 void main() {
 	vec4 farFrustumVertex = rs.vpMatrixInv * vec4(screenCoord_v * 2 - 1, 1, 1);
@@ -53,9 +67,28 @@ void main() {
 	
 	vec3 color = texture(texIn, screenCoord_v).rgb + calcGodRays() * rs.sunColor;
 	
-	if (texture(depthSampler, screenCoord_v).r == 1) {
-		color += SKY_COLOR;//texture(skybox, eyeVector).rgb;
+	float depthH = texture(depthSampler, screenCoord_v).r;
+	vec3 worldPos = worldPosFromDepth(depthH);
+	
+	color = mix(SKY_COLOR, color, fog(distance(worldPos, rs.cameraPos)));
+	
+	/*
+	vec3 fogSampleRay = worldPos - rs.cameraPos;
+	float fogSampleRayLen = min(40, max(length(fogSampleRay) - 5, 0));
+	vec3 fogSampleRayStep = normalize(fogSampleRay) * fogSampleRayLen / 64;
+	float inScatterTotal = 0;
+	for (int i = 1; i <= 64; i++) {
+		vec3 samplePos = rs.cameraPos + fogSampleRayStep * float(i);
+		vec4 coords;
+		float inScatter = 1;
+		if (getShadowMapCoords(samplePos, coords)) {
+			inScatter = texture(shadowMap, coords).r;
+		}
+		
+		inScatterTotal += inScatter / 64.0;
 	}
+	color += SKY_COLOR * inScatterTotal * 0.1;
+	*/
 	
 	color_out = vec4(vec3(1.0) - exp(-exposure * color), 1.0);
 	

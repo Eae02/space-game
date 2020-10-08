@@ -19,7 +19,17 @@ inline uint32_t packVec3(const glm::vec3& vec) {
 	return ret;
 }
 
-glm::vec3 randomDirection(std::mt19937& rng);
+inline glm::vec3 randomDirection(std::mt19937& rng) {
+	const float theta = std::uniform_real_distribution<float>(0, (float)M_PI * 2)(rng);
+	const float cosPitch = std::uniform_real_distribution<float>(-1.0f, 1.0f)(rng);
+	const float sinPitch = std::sin(std::acos(cosPitch));
+	return glm::vec3(std::cos(theta) * sinPitch, std::sin(theta) * sinPitch, cosPitch);
+}
+
+inline glm::vec3 multiplyAndWDivide(const glm::mat4& vp, const glm::vec3& pos) {
+	glm::vec4 pos4 = vp * glm::vec4(pos, 1);
+	return glm::vec3(pos4) / pos4.w;
+}
 
 void unprojectFrustumCorners(const glm::mat4& inverseViewProj, glm::vec3* cornersOut);
 

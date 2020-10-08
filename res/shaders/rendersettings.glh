@@ -1,7 +1,9 @@
+const int NUM_SHADOW_CASCADES = 3;
+
 layout(binding=0, std140) uniform RenderSettings {
 	mat4 vpMatrix;
 	mat4 vpMatrixInv;
-	mat4 shadowMatrix;
+	mat4 shadowMatrices[NUM_SHADOW_CASCADES];
 	vec3 cameraPos;
 	float gameTime;
 	vec3 sunColor;

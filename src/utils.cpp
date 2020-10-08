@@ -1,12 +1,5 @@
 #include "utils.hpp"
 
-glm::vec3 randomDirection(std::mt19937& rng) {
-	const float theta = std::uniform_real_distribution<float>(0, (float)M_PI * 2)(rng);
-	const float cosPitch = std::uniform_real_distribution<float>(-1.0f, 1.0f)(rng);
-	const float sinPitch = std::sin(std::acos(cosPitch));
-	return glm::vec3(std::cos(theta) * sinPitch, std::sin(theta) * sinPitch, cosPitch);
-}
-
 static inline glm::vec4 createFrustumPlane(const glm::vec3& p1, const glm::vec3& p2,
                                            const glm::vec3& p3, const glm::vec3& normalTarget)
 {
@@ -24,10 +17,10 @@ static inline glm::vec4 createFrustumPlane(const glm::vec3& p1, const glm::vec3&
 }
 
 void unprojectFrustumCorners(const glm::mat4& inverseViewProj, glm::vec3* cornersOut) {
-	cornersOut[0] = { -1,  1, 0 };
-	cornersOut[1] = {  1,  1, 0 };
-	cornersOut[2] = {  1, -1, 0 };
-	cornersOut[3] = { -1, -1, 0 };
+	cornersOut[0] = { -1,  1, -1 };
+	cornersOut[1] = {  1,  1, -1 };
+	cornersOut[2] = {  1, -1, -1 };
+	cornersOut[3] = { -1, -1, -1 };
 	cornersOut[4] = { -1,  1, 1 };
 	cornersOut[5] = {  1,  1, 1 };
 	cornersOut[6] = {  1, -1, 1 };
