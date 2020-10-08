@@ -34,6 +34,14 @@ void Texture::initialize() {
 	initialized = true;
 }
 
+void Texture::setParamsForFramebuffer() {
+	glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTextureParameteri(texture, GL_TEXTURE_BASE_LEVEL, 0);
+	glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
 void Texture::setData(GLenum internalFormat, GLenum type, const void* data) {
 	glTextureSubImage2D(texture, 0, 0, 0, width, height, internalFormat, type, data);
 }

@@ -12,6 +12,8 @@ struct Texture {
 	void load(const std::string& path, bool srgb, bool generateMipmaps);
 	
 	void initialize();
+	void setParamsForFramebuffer();
+	
 	void setData(GLenum internalFormat, GLenum type, const void* data);
 	
 	void destroy();

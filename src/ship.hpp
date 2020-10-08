@@ -20,4 +20,7 @@ struct Ship {
 	
 	float rollVelocity = 0;
 	float rollOffset = 0;
+	
+	float forwardVel = 0;
+	float engineIntensity = 0;
 };

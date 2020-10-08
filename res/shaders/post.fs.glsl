@@ -12,7 +12,7 @@ const float exposure = 1;
 #include rendersettings.glh
 #include lighting.glh
 
-const uint grSampleCount = 64;
+const uint grSampleCount = 32;
 const float grLightDecay = pow(0.00004, 1.0 / float(grSampleCount));
 const float grSunRadius = 15;
 const float grBrightness = 5;
@@ -46,6 +46,8 @@ float calcGodRays() {
 	return light * grBrightness;
 }
 
+layout(location=0) uniform uint enableVolLight;
+
 vec3 worldPosFromDepth(float depthH) {
 	vec4 h = vec4(screenCoord_v * 2 - 1, depthH * 2 - 1, 1);
 	vec4 d = rs.vpMatrixInv * h;
@@ -72,23 +74,22 @@ void main() {
 	
 	color = mix(SKY_COLOR, color, fog(distance(worldPos, rs.cameraPos)));
 	
-	/*
-	vec3 fogSampleRay = worldPos - rs.cameraPos;
-	float fogSampleRayLen = min(40, max(length(fogSampleRay) - 5, 0));
-	vec3 fogSampleRayStep = normalize(fogSampleRay) * fogSampleRayLen / 64;
-	float inScatterTotal = 0;
-	for (int i = 1; i <= 64; i++) {
-		vec3 samplePos = rs.cameraPos + fogSampleRayStep * float(i);
-		vec4 coords;
-		float inScatter = 1;
-		if (getShadowMapCoords(samplePos, coords)) {
-			inScatter = texture(shadowMap, coords).r;
+	if (enableVolLight == 1) {
+		const int VOL_LIGHT_SAMPLES = 64;
+		vec3 vlSampleRay = worldPos - rs.cameraPos;
+		float vlSampleRayLen = min(300, max(length(vlSampleRay) - 5, 0));
+		vec3 vlSampleRayStep = normalize(vlSampleRay) * vlSampleRayLen / VOL_LIGHT_SAMPLES;
+		float blockedSamples = 0;
+		for (int i = 1; i <= VOL_LIGHT_SAMPLES; i++) {
+			vec3 samplePos = rs.cameraPos + vlSampleRayStep * float(i);
+			vec4 coords;
+			float inScatter = 1;
+			if (getShadowMapCoords(samplePos, coords)) {
+				blockedSamples += (1 - texture(shadowMap, coords).r);
+			}
 		}
-		
-		inScatterTotal += inScatter / 64.0;
+		color *= exp(-blockedSamples * 0.025);
 	}
-	color += SKY_COLOR * inScatterTotal * 0.1;
-	*/
 	
 	color_out = vec4(vec3(1.0) - exp(-exposure * color), 1.0);
 	

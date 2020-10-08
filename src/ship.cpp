@@ -29,6 +29,9 @@ static inline glm::mat4 makeRotationMatrix(float roll, float pitch) {
 	return glm::rotate(glm::mat4(1), roll, glm::vec3(0, 0, 1)) * glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0));
 }
 
+constexpr float SLOW_SPEED = 10;
+constexpr float FAST_SPEED = 100;
+
 void Ship::update(float dt, const InputState& curInput, const InputState& prevInput) {
 	float accelX = calculateAcceleration(dt, (int)curInput.leftKey - (int)curInput.rightKey, vel.x);
 	float accelY = calculateAcceleration(dt, (int)curInput.upKey - (int)curInput.downKey, vel.y);
@@ -60,8 +63,13 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 	float desiredRollOffset = -vel.x * MOVE_LR_MAX_ROLL / MAX_SPEED_LRUP;
 	rollOffset += (desiredRollOffset - rollOffset) * std::min(3 * dt, 1.0f);
 	
-	if (curInput.moreSpeedKey)
-		pos += rotation * (glm::vec3(0, 0, 100) * dt);
+	float targetSpeed01 = curInput.moreSpeedKey ? 1 : 0;
+	engineIntensity = glm::mix(targetSpeed01, engineIntensity, std::min(0.2f * dt, 1.0f));
+	
+	forwardVel += engineIntensity * 30 * dt;
+	forwardVel -= forwardVel * dt * 0.1f;
+	
+	pos += rotation * (glm::vec3(0, 0, forwardVel) * dt);
 	
 	worldMatrix =
 		glm::translate(glm::mat4(1), pos) *
@@ -79,7 +87,7 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 
 static Shader modelShader, modelShaderShadow, emissiveShader;
 
-static const glm::vec3 EMISSIVE_COLOR = 5.0f * glm::convertSRGBToLinear(glm::vec3(153, 196, 233) / 255.0f);
+static const glm::vec3 EMISSIVE_COLOR = glm::convertSRGBToLinear(glm::vec3(153, 196, 233) / 255.0f);
 
 static constexpr float SHIP_SPEC_LO = 3;
 static constexpr float SHIP_SPEC_HI = 20;
@@ -88,6 +96,9 @@ static constexpr float SHIP_SPEC_EXP = 100;
 static constexpr float WINDOW_SPEC_LO = 3;
 static constexpr float WINDOW_SPEC_HI = 20;
 static constexpr float WINDOW_SPEC_EXP = 100;
+
+constexpr float LOW_ENGINE_COLOR = 3;
+constexpr float HIGH_ENGINE_COLOR = 8;
 
 void Ship::draw() const {
 	glBindVertexArray(Model::vao);
@@ -105,8 +116,10 @@ void Ship::draw() const {
 	glUniform3f(1, WINDOW_SPEC_LO, WINDOW_SPEC_HI, WINDOW_SPEC_EXP);
 	res::shipModel.drawMesh(res::shipModel.findMesh("Window"));
 	
-	
 	emissiveShader.use();
+	float emissiveScale = glm::mix(LOW_ENGINE_COLOR, HIGH_ENGINE_COLOR, engineIntensity);
+	glm::vec3 scaledEmissive = emissiveScale * EMISSIVE_COLOR;
+	glUniform3fv(1, 1, (const float*)&scaledEmissive);
 	glUniformMatrix4fv(0, 1, false, (const float*)&worldMatrix);
 	res::shipModel.drawMesh(res::shipModel.findMesh("BlueL"));
 	res::shipModel.drawMesh(res::shipModel.findMesh("BlueS"));
@@ -132,6 +145,4 @@ void Ship::initShaders() {
 	emissiveShader.attachStage(GL_VERTEX_SHADER, "model.vs.glsl");
 	emissiveShader.attachStage(GL_FRAGMENT_SHADER, "emissive.fs.glsl");
 	emissiveShader.link("emissive");
-	
-	glProgramUniform3fv(emissiveShader.program, 1, 1, (const float*)&EMISSIVE_COLOR);
 }

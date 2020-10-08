@@ -133,6 +133,8 @@ int main() {
 					frustumPlanesFrozen = !frustumPlanesFrozen;
 				if (event.key.keysym.scancode == SDL_SCANCODE_F7)
 					drawAsteroidsWireframe = !drawAsteroidsWireframe;
+				if (event.key.keysym.scancode == SDL_SCANCODE_F6)
+					renderer::enableVolumetricLighting = !renderer::enableVolumetricLighting;
 			}
 		}
 		
