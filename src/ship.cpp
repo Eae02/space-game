@@ -1,5 +1,7 @@
 #include "ship.hpp"
 #include "input.hpp"
+#include "resources.hpp"
+#include "graphics/shader.hpp"
 
 constexpr float MAX_SPEED_LRUP = 10;
 constexpr float ACCEL_TIME_LRUP = 0.5f;
@@ -73,4 +75,63 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 		glm::transpose(glm::mat4_cast(cameraRotation)) *
 		glm::translate(glm::mat4(1), -pos);
 	viewMatrixInv = glm::inverse(viewMatrix); //glm::translate(glm::mat4(1), cameraOffset) * glm::transpose(makeRotationMatrix(cameraRoll, pitch)) * glm::translate(glm::mat4(1), -pos);
+}
+
+static Shader modelShader, modelShaderShadow, emissiveShader;
+
+static const glm::vec3 EMISSIVE_COLOR = 5.0f * glm::convertSRGBToLinear(glm::vec3(153, 196, 233) / 255.0f);
+
+static constexpr float SHIP_SPEC_LO = 3;
+static constexpr float SHIP_SPEC_HI = 20;
+static constexpr float SHIP_SPEC_EXP = 100;
+
+static constexpr float WINDOW_SPEC_LO = 3;
+static constexpr float WINDOW_SPEC_HI = 20;
+static constexpr float WINDOW_SPEC_EXP = 100;
+
+void Ship::draw() const {
+	glBindVertexArray(Model::vao);
+	res::shipModel.bind();
+	
+	modelShader.use();
+	
+	res::shipAlbedo.bind(0);
+	res::shipNormals.bind(1);
+	glUniformMatrix4fv(0, 1, false, (const float*)&worldMatrix);
+	
+	glUniform3f(1, SHIP_SPEC_LO, SHIP_SPEC_HI, SHIP_SPEC_EXP);
+	res::shipModel.drawMesh(res::shipModel.findMesh("Aluminum"));
+	
+	glUniform3f(1, WINDOW_SPEC_LO, WINDOW_SPEC_HI, WINDOW_SPEC_EXP);
+	res::shipModel.drawMesh(res::shipModel.findMesh("Window"));
+	
+	
+	emissiveShader.use();
+	glUniformMatrix4fv(0, 1, false, (const float*)&worldMatrix);
+	res::shipModel.drawMesh(res::shipModel.findMesh("BlueL"));
+	res::shipModel.drawMesh(res::shipModel.findMesh("BlueS"));
+}
+
+void Ship::drawShadow(const glm::mat4& shadowMatrix) const {
+	glBindVertexArray(Model::vao);
+	modelShaderShadow.use();
+	glm::mat4 shadowWorldMatrix = shadowMatrix * worldMatrix;
+	glUniformMatrix4fv(0, 1, false, (const float*)&shadowWorldMatrix);
+	res::shipModel.bind();
+	res::shipModel.drawAllMeshes();
+}
+
+void Ship::initShaders() {
+	modelShader.attachStage(GL_VERTEX_SHADER, "model.vs.glsl");
+	modelShader.attachStage(GL_FRAGMENT_SHADER, "model.fs.glsl");
+	modelShader.link("model");
+
+	modelShaderShadow.attachStage(GL_VERTEX_SHADER, "model_shadow.vs.glsl");
+	modelShaderShadow.link("model_shadow");
+
+	emissiveShader.attachStage(GL_VERTEX_SHADER, "model.vs.glsl");
+	emissiveShader.attachStage(GL_FRAGMENT_SHADER, "emissive.fs.glsl");
+	emissiveShader.link("emissive");
+	
+	glProgramUniform3fv(emissiveShader.program, 1, 1, (const float*)&EMISSIVE_COLOR);
 }

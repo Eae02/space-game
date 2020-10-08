@@ -9,7 +9,7 @@ struct Texture {
 	GLuint texture;
 	bool initialized = false;
 	
-	void load(const char* path, bool srgb, bool generateMipmaps);
+	void load(const std::string& path, bool srgb, bool generateMipmaps);
 	
 	void initialize();
 	void setData(GLenum internalFormat, GLenum type, const void* data);

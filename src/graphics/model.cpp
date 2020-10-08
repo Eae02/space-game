@@ -72,11 +72,11 @@ void generateTangents(std::span<Vertex> vertices, std::span<const glm::vec3> nor
 	std::free(tangents2);
 }
 
-void Model::loadObj(const char* path) {
+void Model::loadObj(const std::string& path) {
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
 	std::string errorString;
-	if (!tinyobj::LoadObj(shapes, materials, errorString, path, nullptr, tinyobj::triangulation)) {
+	if (!tinyobj::LoadObj(shapes, materials, errorString, path.c_str(), nullptr, tinyobj::triangulation)) {
 		std::cerr << "error loading obj: " << errorString << std::endl;
 		std::abort();
 	}
@@ -101,6 +101,8 @@ void Model::loadObj(const char* path) {
 		
 		indices.insert(indices.end(), shape.mesh.indices.begin(), shape.mesh.indices.end());
 		
+		normals.clear();
+		
 		assert(shape.mesh.positions.size() % 3 == 0);
 		assert(shape.mesh.positions.size() == shape.mesh.normals.size());
 		assert(shape.mesh.positions.size() / 3 == shape.mesh.texcoords.size() / 2);
@@ -122,18 +124,20 @@ void Model::loadObj(const char* path) {
 			
 			normals.push_back(normal);
 		}
+		
+		generateTangents(
+			std::span<Vertex>(&vertices[mesh.firstVertex], vertices.size() - mesh.firstVertex),
+			normals, shape.mesh.indices);
 	}
 	
 #ifdef DEBUG
-	std::cout << " " << path << " mesh names: ";
+	std::cout << path << " mesh names: ";
 	for (uint32_t i = 0; i < numMeshes; i++) {
 		if (i) std::cout << ", ";
 		std::cout << "'" << meshes[i].name << "'";
 	}
 	std::cout << std::endl;
 #endif
-	
-	generateTangents(vertices, normals, indices);
 	
 	initialize(vertices, indices);
 }
@@ -152,13 +156,18 @@ void Model::bind() const {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 }
 
-void Model::drawMesh(uint32_t meshIndex, uint32_t numInstances) const {
-	glDrawElementsInstancedBaseVertex(
+void Model::drawMesh(uint32_t meshIndex) const {
+	glDrawElementsBaseVertex(
 		GL_TRIANGLES,
 		meshes[meshIndex].numIndices,
 		GL_UNSIGNED_INT,
 		(void*)(meshes[meshIndex].firstIndex * sizeof(uint32_t)),
-		numInstances,
 		meshes[meshIndex].firstVertex
 	);
+}
+
+void Model::drawAllMeshes() const {
+	for (uint32_t i = 0; i < numMeshes; i++) {
+		drawMesh(i);
+	}
 }

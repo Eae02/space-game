@@ -3,6 +3,11 @@
 struct Ship {
 	void update(float dt, const struct InputState& curInput, const struct InputState& prevInput);
 	
+	void draw() const;
+	void drawShadow(const glm::mat4& shadowMatrix) const;
+	
+	static void initShaders();
+	
 	glm::mat4 worldMatrix;
 	glm::mat4 viewMatrix;
 	glm::mat4 viewMatrixInv;

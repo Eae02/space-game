@@ -29,7 +29,7 @@ struct Model {
 	Mesh meshes[MAX_MESHES];
 	
 	void initialize(std::span<Vertex> vertices, std::span<uint32_t> indices);
-	void loadObj(const char* path);
+	void loadObj(const std::string& path);
 	
 	void destroy();
 	
@@ -37,7 +37,8 @@ struct Model {
 	
 	void bind() const;
 	
-	void drawMesh(uint32_t meshIndex, uint32_t numInstances) const;
+	void drawMesh(uint32_t meshIndex) const;
+	void drawAllMeshes() const;
 };
 
 void generateTangents(std::span<Vertex> vertices, std::span<const glm::vec3> normals, std::span<const uint32_t> indices);

@@ -52,3 +52,19 @@ std::array<glm::vec4, 6> createFrustumPlanes(const glm::mat4& inverseViewProj) {
 	
 	return planes;
 }
+
+std::string exeDirPath;
+
+void initExeDirPath() {
+	char* exePath = realpath("/proc/self/exe", nullptr);
+	if (exePath == nullptr) {
+		exeDirPath = "./";
+	} else {
+		exeDirPath = exePath;
+		size_t lastSlash = exeDirPath.rfind('/');
+		if (lastSlash != std::string_view::npos) {
+			exeDirPath = exeDirPath.substr(0, lastSlash + 1);
+		}
+		free(exePath);
+	}
+}

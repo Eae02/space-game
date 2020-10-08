@@ -13,6 +13,8 @@
 #include "graphics/stars.hpp"
 
 int main() {
+	initExeDirPath();
+	
 	if (SDL_Init(SDL_INIT_VIDEO)) {
 		std::cerr << SDL_GetError() << std::endl;
 		return 1;
@@ -77,27 +79,9 @@ int main() {
 	Model::initializeVao();
 	res::load();
 	
-	Shader modelShader;
-	modelShader.attachStage(GL_VERTEX_SHADER, "model.vs.glsl");
-	modelShader.attachStage(GL_FRAGMENT_SHADER, "model.fs.glsl");
-	modelShader.link("model");
-	
-	Shader modelShaderShadow;
-	modelShaderShadow.attachStage(GL_VERTEX_SHADER, "model_shadow.vs.glsl");
-	modelShaderShadow.link("model_shadow");
-	
-	Shader emissiveShader;
-	emissiveShader.attachStage(GL_VERTEX_SHADER, "model.vs.glsl");
-	emissiveShader.attachStage(GL_FRAGMENT_SHADER, "emissive.fs.glsl");
-	emissiveShader.link("emissive");
-	
-	const glm::vec3 emissiveColor = 5.0f * glm::convertSRGBToLinear(glm::vec3(153, 196, 233) / 255.0f);
-	glProgramUniform3fv(emissiveShader.program, 1, 1, (const float*)&emissiveColor);
-	
 	renderer::initialize();
-	
 	stars::initialize();
-	
+	Ship::initShaders();
 	initializeAsteroids();
 	
 	uint64_t lastFrameBegin = SDL_GetPerformanceCounter();
@@ -190,35 +174,14 @@ int main() {
 		prepareAsteroids(renderSettings.cameraPos, frustumPlanes.data(), shadowMapMatrices.frustumPlanes);
 		
 		renderShadows([&] (uint32_t cascade) {
-			glBindVertexArray(Model::vao);
-			modelShaderShadow.use();
-			glm::mat4 shadowWorldMatrix = shadowMapMatrices.matrices[cascade] * ship.worldMatrix;
-			glUniformMatrix4fv(0, 1, false, (const float*)&shadowWorldMatrix);
-			res::shipModel.bind();
-			res::shipModel.drawMesh(res::shipModel.findMesh("Aluminum"), 1);
-			
+			ship.drawShadow(shadowMapMatrices.matrices[cascade]);
 			drawAsteroidsShadow(cascade, shadowMapMatrices.matrices[cascade]);
 		});
 		
 		renderer::beginMainPass();
 		
 		glBindTextureUnit(2, shadowMap);
-		
-		glBindVertexArray(Model::vao);
-		modelShader.use();
-		res::shipAlbedo.bind(0);
-		res::shipNormals.bind(1);
-		glUniformMatrix4fv(0, 1, false, (const float*)&ship.worldMatrix);
-		glUniform3f(1, 3, 20, 100); //specular intensity (low), specular intensity (high), specular exponent
-		res::shipModel.bind();
-		res::shipModel.drawMesh(res::shipModel.findMesh("Aluminum"), 1);
-		
-		emissiveShader.use();
-		glUniformMatrix4fv(0, 1, false, (const float*)&ship.worldMatrix);
-		//res::shipModel.bind();
-		res::shipModel.drawMesh(res::shipModel.findMesh("BlueL"), 1);
-		res::shipModel.drawMesh(res::shipModel.findMesh("BlueS"), 1);
-		
+		ship.draw();
 		drawAsteroids(drawAsteroidsWireframe);
 		
 		stars::draw(drawableWidth, drawableHeight);

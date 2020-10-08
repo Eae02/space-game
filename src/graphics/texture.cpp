@@ -3,8 +3,8 @@
 
 static const std::array<GLenum, 5> formatsByBPP = { 0, GL_RED, GL_RG, GL_RGB, GL_RGBA };
 
-void Texture::load(const char* path, bool srgb, bool generateMipmaps) {
-	SDL_Surface* surface = IMG_Load(path);
+void Texture::load(const std::string& path, bool srgb, bool generateMipmaps) {
+	SDL_Surface* surface = IMG_Load(path.c_str());
 	if (surface == nullptr) {
 		std::cerr << IMG_GetError() << std::endl;
 		std::abort();

@@ -1,4 +1,5 @@
 #include "shader.hpp"
+#include "../utils.hpp"
 
 #include <sstream>
 #include <fstream>
@@ -21,8 +22,10 @@ static void checkShaderStatus(std::string_view fileName, GLuint handle, GLenum s
 }
 
 static void loadShaderCode(std::ostringstream& sourceStream, std::string_view fileName) {
-	std::string path("res/shaders/");
+	std::string path(exeDirPath);
+	path.append("res/shaders/");
 	path.append(fileName);
+	
 	std::ifstream fileStream(path, std::ios::binary | std::ios::in);
 	if (!fileStream) {
 		std::cerr << "error opening shader file for reading: '" << path << "'" << std::endl;

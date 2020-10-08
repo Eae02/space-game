@@ -35,6 +35,9 @@ void unprojectFrustumCorners(const glm::mat4& inverseViewProj, glm::vec3* corner
 
 std::array<glm::vec4, 6> createFrustumPlanes(const glm::mat4& inverseViewProj);
 
+extern std::string exeDirPath;
+void initExeDirPath();
+
 struct PairIntIntHash {
 	size_t operator()(const std::pair<int, int>& p) const {
 		return (size_t)p.first | ((size_t)p.second << (size_t)32);
