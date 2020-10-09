@@ -85,21 +85,21 @@ static inline void calculateNormals(std::span<AsteroidVertex> vertices, std::spa
 }
 
 AsteroidVariant generateSingleAsteroidVariant(std::mt19937& rng, std::vector<AsteroidVertex>& vertices) {
-	float innerRadius = std::uniform_real_distribution<float>(0.2f, 0.3f)(rng);
+	float innerRadius = std::uniform_real_distribution<float>(0.4f, 0.5f)(rng);
 	
 	AsteroidVariant variant;
 	variant.firstLodFirstVertex = vertices.size();
 	
 	noise::module::Perlin mainNoise;
-	mainNoise.SetOctaveCount(2);
+	mainNoise.SetOctaveCount(3);
 	mainNoise.SetPersistence(0.5f);
 	mainNoise.SetLacunarity(1.5f);
 	mainNoise.SetFrequency(0.02f);
 	mainNoise.SetSeed(rng());
 	
 	noise::module::Perlin ridgeNoise;
-	ridgeNoise.SetOctaveCount(5);
-	ridgeNoise.SetPersistence(0.5f);
+	ridgeNoise.SetOctaveCount(6);
+	ridgeNoise.SetPersistence(0.6f);
 	ridgeNoise.SetLacunarity(1.5f);
 	ridgeNoise.SetFrequency(0.05f);
 	ridgeNoise.SetSeed(rng());
@@ -284,7 +284,7 @@ void initializeAsteroids() {
 		st.firstVertex = asteroidVariants[variant].firstLodFirstVertex;
 		st.scale = asteroidVariants[variant].size;
 		st.initialRotation = std::uniform_real_distribution<float>(0, (float)M_PI * 2)(rng);
-		st.rotationSpeed = std::uniform_real_distribution<float>(0.1f, 0.3f)(rng);
+		st.rotationSpeed = std::uniform_real_distribution<float>(0.1f, 0.4f)(rng);
 		st.rotationAxis = glm::packSnorm4x8(glm::vec4(randomDirection(rng), 0.0f));
 		st.pos = pos;
 	}
@@ -319,7 +319,6 @@ void prepareAsteroids(const glm::vec3& cameraPos, const glm::vec4 frustumPlanes[
 	
 	glm::vec3 boxOffset = glm::floor(cameraPos / asteroidBoxSize) * asteroidBoxSize;
 	glm::vec3 posInBox = cameraPos - boxOffset;
-	
 	glm::vec3 wrappingOffset = asteroidBoxSize * 1.5f - posInBox;
 	glm::vec3 globalOffset = cameraPos - asteroidBoxSize / 2;
 	

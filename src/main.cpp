@@ -1,11 +1,11 @@
 #include <SDL.h>
-#include <SDL_image.h>
 
 #include "input.hpp"
 #include "resources.hpp"
 #include "ship.hpp"
 #include "settings.hpp"
 #include "utils.hpp"
+#include "graphics/particles.hpp"
 #include "graphics/shadows.hpp"
 #include "graphics/asteroids.hpp"
 #include "graphics/model.hpp"
@@ -21,8 +21,6 @@ int main() {
 		std::cerr << SDL_GetError() << std::endl;
 		return 1;
 	}
-	
-	IMG_Init(IMG_INIT_PNG);
 	
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
@@ -61,11 +59,9 @@ int main() {
 	std::cout << "using opengl device " << glGetString(GL_RENDERER) << std::endl;
 	
 	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_CLAMP);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glDepthFunc(GL_LEQUAL);
 	glBlendEquation(GL_FUNC_ADD);
-	glBlendFunc(GL_ONE, GL_ONE);
 	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &renderer::uboAlignment);
 	
 #ifdef DEBUG
@@ -88,6 +84,7 @@ int main() {
 	renderer::initialize();
 	stars::initialize();
 	Ship::initShaders();
+	initializeParticles();
 	initializeAsteroids();
 	
 	uint64_t lastFrameBegin = SDL_GetPerformanceCounter();
@@ -188,7 +185,7 @@ int main() {
 		ship.draw();
 		drawAsteroids(drawAsteroidsWireframe);
 		
-		//stars::draw(drawableWidth, drawableHeight);
+		drawParticles(currentTime, renderSettings.cameraPos);
 		
 		renderer::endMainPass(prevViewProj, dt);
 		

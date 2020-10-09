@@ -10,7 +10,7 @@ out vec3 worldPos_v;
 out vec3 texPos_v;
 flat out int drawIndex_v;
 
-const float textureScale = 0.4;
+const float textureScale = 0.05;
 
 layout(binding=0, std430) readonly buffer AsteroidTransformsBuf {
 	mat4 asteroidTransforms[];

@@ -4,14 +4,15 @@ out vec4 color_out;
 
 layout(binding=0) uniform sampler2D texIn;
 layout(binding=1) uniform sampler2D depthSampler;
-layout(binding=2) uniform sampler2DArrayShadow shadowMap;
+layout(binding=2) uniform sampler2DArray shadowMap;
 
 const float exposure = 1;
 
+#define NO_CALC_SHADOW
 #include rendersettings.glh
 #include lighting.glh
 
-const uint grSampleCount = 32;
+const uint grSampleCount = 50;
 const float grLightDecay = pow(0.00004, 1.0 / float(grSampleCount));
 const float grSunRadius = 15;
 const float grBrightness = 5;
@@ -51,9 +52,9 @@ vec3 worldPosFromDepth(float depthH) {
 	return d.xyz / d.w;
 }
 
-const vec3 SKY_COLOR = vec3(0.242281139, 0.617206633, 0.830769956);
-const float FOG_DENSITY = 0.0002;
-const float FOG_START = 200;
+const vec3 SKY_COLOR = vec3(0.242281139, 0.617206633, 0.830769956) * 0.5;
+const float FOG_DENSITY = 0.0003;
+const float FOG_START = 100;
 const float FOG_END = 1000;
 
 #ifdef ENABLE_MOTION_BLUR
@@ -103,23 +104,6 @@ void main() {
 	color += calcGodRays() * rs.sunColor;
 	
 	color = mix(SKY_COLOR, color, fog(distance(worldPos, rs.cameraPos)));
-	
-#ifdef ENABLE_VOL_LIGHT
-	const int VOL_LIGHT_SAMPLES = 64;
-	vec3 vlSampleRay = worldPos - rs.cameraPos;
-	float vlSampleRayLen = min(300, max(length(vlSampleRay) - 5, 0));
-	vec3 vlSampleRayStep = normalize(vlSampleRay) * vlSampleRayLen / VOL_LIGHT_SAMPLES;
-	float blockedSamples = 0;
-	for (int i = 1; i <= VOL_LIGHT_SAMPLES; i++) {
-		vec3 samplePos = rs.cameraPos + vlSampleRayStep * float(i);
-		vec4 coords;
-		float inScatter = 1;
-		if (getShadowMapCoords(samplePos, coords)) {
-			blockedSamples += (1 - texture(shadowMap, coords).r);
-		}
-	}
-	color *= exp(-blockedSamples * 0.025);
-#endif
 	
 	color_out = vec4(vec3(1.0) - exp(-exposure * color), 1.0);
 	

@@ -4,6 +4,8 @@
 #include "../utils.hpp"
 #include "../settings.hpp"
 
+#include <random>
+
 namespace renderer {
 	uint32_t frameCycleIndex = 0;
 	int uboAlignment = 0;
@@ -154,6 +156,10 @@ namespace renderer {
 		glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &attachment);
 	}
 	
+	void renderParticles() {
+		
+	}
+	
 	void endMainPass(const glm::mat4& prevViewProj, float dt) {
 		glDisable(GL_DEPTH_TEST);
 		
@@ -191,6 +197,7 @@ namespace renderer {
 			glBindFramebuffer(GL_FRAMEBUFFER, mainPassFbo);
 			glViewport(0, 0, fbWidth, fbHeight);
 			glEnable(GL_BLEND);
+			glBlendFunc(GL_ONE, GL_ONE);
 			glUniform1f(1, BLOOM_BRIGHTNESS);
 			for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
 				bloomBlurAttachments[i].bind(0);
@@ -206,6 +213,7 @@ namespace renderer {
 		postShader.use();
 		mainPassColorAttachment.bind(0);
 		mainPassDepthAttachment.bind(1);
+		glBindSampler(2, shadowSamplerNoCompare);
 		glBindTextureUnit(2, shadowMap);
 		
 		if (settings::motionBlur) {
@@ -216,5 +224,6 @@ namespace renderer {
 		glEnable(GL_FRAMEBUFFER_SRGB);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glDisable(GL_FRAMEBUFFER_SRGB);
+		glBindSampler(2, 0);
 	}
 }

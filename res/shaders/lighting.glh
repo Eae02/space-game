@@ -19,7 +19,7 @@ const int PCF_SAMPLES = 3;
 bool getShadowMapCoords(vec3 worldPos, out vec4 coords) {
 	for (uint cascade = 0; cascade < NUM_SHADOW_CASCADES; cascade++) {
 		vec4 coords4 = rs.shadowMatrices[cascade] * vec4(worldPos, 1.0);
-		if (abs(coords4.x) <= abs(coords4.w) && abs(coords4.y) <= abs(coords4.w)) {
+		if (abs(coords4.x) <= abs(coords4.w) && abs(coords4.y) <= abs(coords4.w) && abs(coords4.z) <= abs(coords4.w)) {
 			vec3 coords3 = (coords4.xyz / coords4.w) * 0.5 + 0.5;
 			coords = vec4(coords3.xy, cascade, coords3.z + 0.0001);
 			return true;
@@ -28,6 +28,7 @@ bool getShadowMapCoords(vec3 worldPos, out vec4 coords) {
 	return false;
 }
 
+#ifndef NO_CALC_SHADOW
 float calcShadow(vec3 worldPos) {
 	vec4 coords;
 	if (!getShadowMapCoords(worldPos, coords))
@@ -56,7 +57,7 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, vec4 diffuseAndAo, float spec
 	                  2.0 * C2 * L1m1 * normal.y +
 	                  2.0 * C2 * L10  * normal.z;
 	
-	vec3 litColor = irradiance * 0.1 * diffuseAndAo.a * diffuseAndAo.rgb;
+	vec3 litColor = irradiance * 0.15 * diffuseAndAo.a * diffuseAndAo.rgb;
 	
 	float sf = calcShadow(worldPos);
 	if (sf > 0) {
@@ -69,3 +70,4 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, vec4 diffuseAndAo, float spec
 	
 	return litColor;
 }
+#endif

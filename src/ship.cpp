@@ -33,7 +33,7 @@ static inline glm::mat4 makeRotationMatrix(float roll, float pitch) {
 	return glm::rotate(glm::mat4(1), roll, glm::vec3(0, 0, 1)) * glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0));
 }
 
-constexpr float MIN_SPEED = 200;
+constexpr float MIN_SPEED = 100;
 constexpr float MAX_SPEED = 500;
 constexpr float FWD_ACCEL_TIME = 6;
 constexpr float FWD_DEACCEL_TIME = 2;
@@ -70,7 +70,8 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 	float desiredRollOffset = -vel.x * MOVE_LR_MAX_ROLL / MAX_SPEED_LRUP;
 	rollOffset += (desiredRollOffset - rollOffset) * std::min(3 * dt, 1.0f);
 	
-	engineIntensity = glm::mix((float)curInput.moreSpeedKey, engineIntensity, std::min(0.05f * dt, 1.0f));
+	engineIntensity += dt * 2.0f * (curInput.moreSpeedKey ? 1 : -1);
+	engineIntensity = glm::clamp(engineIntensity, 0.0f, 1.0f);
 	
 	if (curInput.moreSpeedKey || forwardVel < MIN_SPEED) {
 		forwardVel = std::min(forwardVel + dt * (MAX_SPEED - MIN_SPEED) / FWD_ACCEL_TIME, MAX_SPEED);
@@ -86,13 +87,13 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 		glm::rotate(glm::mat4(1), rollOffset, rollAxis) *
 		glm::mat4_cast(rotation);
 	
-	cameraRotation = glm::slerp(cameraRotation, rotation, std::min(1 * dt, 1.0f));
+	cameraRotation = glm::slerp(cameraRotation, rotation, std::min(2 * dt, 1.0f));
 	
 	viewMatrix =
 		glm::lookAt(glm::vec3(0, 5, -14), glm::vec3(0, 3, 0), glm::vec3(0, 1, 0)) *
 		glm::transpose(glm::mat4_cast(cameraRotation)) *
 		glm::translate(glm::mat4(1), -pos);
-	viewMatrixInv = glm::inverse(viewMatrix); //glm::translate(glm::mat4(1), cameraOffset) * glm::transpose(makeRotationMatrix(cameraRoll, pitch)) * glm::translate(glm::mat4(1), -pos);
+	viewMatrixInv = glm::inverse(viewMatrix);
 }
 
 static Shader modelShader, modelShaderShadow, emissiveShader;
@@ -108,7 +109,7 @@ static constexpr float WINDOW_SPEC_HI = 20;
 static constexpr float WINDOW_SPEC_EXP = 100;
 
 constexpr float LOW_ENGINE_COLOR = 4;
-constexpr float HIGH_ENGINE_COLOR = 10;
+constexpr float HIGH_ENGINE_COLOR = 7;
 
 void Ship::draw() const {
 	glBindVertexArray(Model::vao);
@@ -127,7 +128,7 @@ void Ship::draw() const {
 	res::shipModel.drawMesh(res::shipModel.findMesh("Window"));
 	
 	emissiveShader.use();
-	float emissiveScale = glm::mix(LOW_ENGINE_COLOR, HIGH_ENGINE_COLOR, speed01);
+	float emissiveScale = glm::mix(LOW_ENGINE_COLOR, HIGH_ENGINE_COLOR, engineIntensity);
 	glm::vec3 scaledEmissive = emissiveScale * EMISSIVE_COLOR;
 	glUniform3fv(1, 1, (const float*)&scaledEmissive);
 	glUniformMatrix4fv(0, 1, false, (const float*)&worldMatrix);
