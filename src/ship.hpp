@@ -23,4 +23,5 @@ struct Ship {
 	
 	float forwardVel = 0;
 	float engineIntensity = 0;
+	float speed01 = 0;
 };

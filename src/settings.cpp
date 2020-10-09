@@ -8,7 +8,10 @@ namespace settings {
 	bool bloom              = true;
 	bool volumetricLighting = false;
 	bool vsync              = false;
+	bool motionBlur         = true;
 	uint32_t shadowRes      = 1024;
+	uint32_t worldSize      = 4;
+	uint32_t lodDist        = 300;
 	
 	void parse() {
 		std::vector<std::pair<std::string, std::string>> settings;
@@ -46,6 +49,10 @@ namespace settings {
 		getBool("bloom", bloom);
 		getBool("vsync", vsync);
 		getBool("volumetricLighting", volumetricLighting);
+		getBool("motionBlur", motionBlur);
 		getUInt("shadowRes", shadowRes, 128);
+		getUInt("worldSize", worldSize, 1);
+		worldSize = glm::clamp(worldSize, 1U, 5U);
+		getUInt("lodDist", lodDist, 100);
 	}
 }

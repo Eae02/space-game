@@ -17,5 +17,6 @@ void main() {
 		color_out += texture(texIn, screenCoord_v - blurVector * i) * kernel[i];
 	}
 	
+	color_out.a = 0;
 	color_out *= brightnessScale;
 }

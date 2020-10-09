@@ -98,8 +98,8 @@ int main() {
 	InputState curInput, prevInput;
 	
 	Ship ship;
-	ship.pos.y += ASTEROID_BOX_HEIGHT * 0.9f;
 	
+	glm::mat4 prevViewProj;
 	std::array<glm::vec4, 6> frustumPlanes;
 	bool frustumPlanesFrozen = false;
 	bool drawAsteroidsWireframe = false;
@@ -110,10 +110,8 @@ int main() {
 	float timeAtLastFpsPrint = SDL_GetPerformanceCounter() / perfCounterFrequency;
 	uint32_t numFrames = 0;
 	
-	constexpr float LOW_FOV = 70.0f;
-	constexpr float HIGH_FOV = 110.0f;
-	constexpr float LOW_FOV_SPEED = 20.0f;
-	constexpr float HIGH_FOV_SPEED = 200.0f;
+	constexpr float LOW_FOV = 75.0f;
+	constexpr float HIGH_FOV = 100.0f;
 	
 	bool shouldClose = false;
 	while (!shouldClose) {
@@ -157,8 +155,7 @@ int main() {
 		SDL_GL_GetDrawableSize(window, &drawableWidth, &drawableHeight);
 		renderer::updateFramebuffers(drawableWidth, drawableHeight);
 		
-		float fovSpeed01 = glm::clamp((ship.forwardVel - LOW_FOV_SPEED) / (HIGH_FOV_SPEED - LOW_FOV_SPEED), 0.0f, 1.0f);
-		float fov = glm::radians(glm::mix(LOW_FOV, HIGH_FOV, fovSpeed01));
+		float fov = glm::radians(glm::mix(LOW_FOV, HIGH_FOV, ship.speed01));
 		glm::mat4 projMatrix = glm::perspectiveFov(fov, (float)drawableWidth, (float)drawableHeight, Z_NEAR, Z_FAR);
 		glm::mat4 inverseProjMatrix = glm::inverse(projMatrix);
 		glm::mat4 vpMatrixInv = ship.viewMatrixInv * inverseProjMatrix;
@@ -191,9 +188,9 @@ int main() {
 		ship.draw();
 		drawAsteroids(drawAsteroidsWireframe);
 		
-		stars::draw(drawableWidth, drawableHeight);
+		//stars::draw(drawableWidth, drawableHeight);
 		
-		renderer::endMainPass();
+		renderer::endMainPass(prevViewProj, dt);
 		
 		fences[renderer::frameCycleIndex] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		renderer::frameCycleIndex = (renderer::frameCycleIndex + 1) % renderer::frameCycleLen;
@@ -201,6 +198,7 @@ int main() {
 		SDL_GL_SwapWindow(window);
 		
 		numFrames++;
+		prevViewProj = renderSettings.vpMatrix;
 	}
 	
 	res::destroy();

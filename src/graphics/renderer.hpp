@@ -27,5 +27,5 @@ namespace renderer {
 	
 	void beginMainPass();
 	
-	void endMainPass();
+	void endMainPass(const glm::mat4& prevViewProj, float dt);
 }

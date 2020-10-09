@@ -1,5 +1,8 @@
 fullscreen:false
 bloom:true
 volumetricLighting:false
-vsync:true
+vsync:false
+motionBlur:false
 shadowRes:1024
+worldSize:3
+lodDist:200

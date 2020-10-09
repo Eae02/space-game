@@ -25,7 +25,7 @@ void initializeShadowMapping() {
 	}
 }
 
-static constexpr float CASCADE_DISTS[NUM_SHADOW_CASCADES] = { 30, 100, 300 };
+static constexpr float CASCADE_DISTS[NUM_SHADOW_CASCADES] = { 40, 200, 500 };
 
 ShadowMapMatrices calculateShadowMapMatrices(const glm::mat4& vpMatrixInv, const glm::vec3& sunDir) {
 	glm::vec3 corners[8];

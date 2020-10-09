@@ -32,8 +32,6 @@ namespace renderer {
 	static Shader bloomBlurShader;
 	static Shader postShader;
 	
-	static GLuint skyboxTexture;
-	
 	void initialize() {
 		mainPassColorAttachment.format = GL_RGBA16F;
 		mainPassDepthAttachment.format = GL_DEPTH_COMPONENT32F;
@@ -45,6 +43,9 @@ namespace renderer {
 		std::string extraFSCode;
 		if (settings::volumetricLighting) {
 			extraFSCode += "#define ENABLE_VOL_LIGHT\n";
+		}
+		if (settings::motionBlur) {
+			extraFSCode += "#define ENABLE_MOTION_BLUR\n";
 		}
 		
 		postShader.attachStage(GL_VERTEX_SHADER, "fullscreen.vs.glsl");
@@ -65,8 +66,6 @@ namespace renderer {
 		glNamedBufferStorage(renderSettingsUbo, bufferLen, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 		renderSettingsUboMemory = (char*)glMapNamedBufferRange(renderSettingsUbo, 0, bufferLen,
 			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-		
-		skyboxTexture = loadTextureCube(exeDirPath + "res/textures/skybox/", 4096);
 	}
 	
 	void updateFramebuffers(uint32_t width, uint32_t height) {
@@ -149,11 +148,13 @@ namespace renderer {
 	constexpr float BLOOM_BLUR_RAD = 1.0f;
 	constexpr float BLOOM_BRIGHTNESS = 0.7f;
 	
+	constexpr float MOTION_BLUR_INTENSITY = 0.02f;
+	
 	inline void invalidateAttachment(GLenum attachment) {
 		glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &attachment);
 	}
 	
-	void endMainPass() {
+	void endMainPass(const glm::mat4& prevViewProj, float dt) {
 		glDisable(GL_DEPTH_TEST);
 		
 		if (settings::bloom) {
@@ -205,8 +206,12 @@ namespace renderer {
 		postShader.use();
 		mainPassColorAttachment.bind(0);
 		mainPassDepthAttachment.bind(1);
-		glBindTextureUnit(2, skyboxTexture);
-		glBindTextureUnit(3, shadowMap);
+		glBindTextureUnit(2, shadowMap);
+		
+		if (settings::motionBlur) {
+			glUniformMatrix4fv(0, 1, false, (const float*)&prevViewProj);
+			glUniform1f(1, MOTION_BLUR_INTENSITY / dt);
+		}
 		
 		glEnable(GL_FRAMEBUFFER_SRGB);
 		glDrawArrays(GL_TRIANGLES, 0, 3);

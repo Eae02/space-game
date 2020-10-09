@@ -36,5 +36,5 @@ void main() {
 	vec3 tnormalZ = vec3(texture(normalMap, texPos_v.xy).rg * 2 - 1 + normal.xy, normal.z);
 	vec3 worldNormal = normalize((asteroidTransforms[drawIndex_v] * vec4(tnormalX.zyx * blend.x + tnormalY.xzy * blend.y + tnormalZ.xyz * blend.z, 0)).xyz);
 	
-	color_out = vec4(calculateLighting(worldPos_v, worldNormal, diffuseAndAO, specIntensity, specExponent), 1);
+	color_out = vec4(calculateLighting(worldPos_v, worldNormal, diffuseAndAO, specIntensity, specExponent), 0);
 }

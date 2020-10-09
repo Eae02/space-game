@@ -39,8 +39,9 @@ uniform uint lodVertexOffsets[NUM_LOD_LEVELS];
 uniform uint lodFirstIndex[NUM_LOD_LEVELS];
 uniform uint lodNumIndices[NUM_LOD_LEVELS];
 
-const float FADE_BEGIN_DIST = 4000;
-const float FADE_END_DIST = FADE_BEGIN_DIST * 1.05;
+int getLodLevel(float dist, float bias) {
+	return NUM_LOD_LEVELS - 1 - clamp(int(dist / distancePerLod - bias), 0, NUM_LOD_LEVELS - 1);
+}
 
 void main() {
 	uint asteroidIdx = gl_GlobalInvocationID.x;
@@ -53,11 +54,10 @@ void main() {
 	
 	//Lod
 	float distToEdge = max(distance(rs.cameraPos, pos) - asteroidSettings[asteroidIdx].radius, 0);
-	int lodLevel = NUM_LOD_LEVELS - 1 - clamp(int(distToEdge / distancePerLod), 0, NUM_LOD_LEVELS - 1);
-	uint enabled = (distToEdge < FADE_END_DIST) ? 1 : 0;
+	int lodLevel = getLodLevel(distToEdge, 1);
 	
 	//Frustum culling
-	drawArgsOut[drawArgsIdx + 1] = enabled;
+	drawArgsOut[drawArgsIdx + 1] = 1;
 	for (int i = 0; i < 6; i++) {
 		if (dot(vec4(pos, 1), frustumPlanes[i]) < -asteroidSettings[asteroidIdx].radius) {
 			drawArgsOut[drawArgsIdx + 1] = 0;
@@ -67,7 +67,7 @@ void main() {
 	//Frustum culling for shadow mapping
 	for (uint cascade = 0; cascade < NUM_SHADOW_CASCADES; cascade++) {
 		uint enabledCmdIndex = drawArgsStride * (cascade + 1) + drawArgsIdx + 1;
-		drawArgsOut[enabledCmdIndex] = enabled;
+		drawArgsOut[enabledCmdIndex] = 1;
 		for (int i = 0; i < 4; i++) {
 			if (dot(vec4(pos, 1), frustumPlanesShadow[cascade * 4 + i]) < -asteroidSettings[asteroidIdx].radius) {
 				drawArgsOut[enabledCmdIndex] = 0;
@@ -84,7 +84,7 @@ void main() {
 	drawArgsOut[drawArgsIdx + 3] = dafirstVertex;
 	drawArgsOut[drawArgsIdx + 4] = 0;
 	
-	uint lodLevelShadow = lodLevel == NUM_LOD_LEVELS - 1 ? lodLevel : max(lodLevel - 1, 0);
+	uint lodLevelShadow = getLodLevel(distToEdge, -1);
 	daNumIndices = lodNumIndices[lodLevelShadow];
 	daFirstIndex = lodFirstIndex[lodLevelShadow];
 	dafirstVertex = asteroidSettings[asteroidIdx].firstVertex + lodVertexOffsets[lodLevelShadow];
@@ -100,16 +100,10 @@ void main() {
 	float sinr = sin(rotation);
 	float cosr = cos(rotation);
 	vec3 raxis = normalize(unpackSnorm4x8(asteroidSettings[asteroidIdx].rotationAxis).xyz);
-	float scale = (1 - clamp((distToEdge - FADE_BEGIN_DIST) / (FADE_END_DIST - FADE_BEGIN_DIST), 0, 1));
 	transformsOut[asteroidIdx] = mat4(
-		vec4(scale, 0, 0, 0),
-		vec4(0, scale, 0, 0),
-		vec4(0, 0, scale, 0),
-		vec4(pos, 1)
-	) * transpose(mat4(
 		vec4(cosr + raxis.x * raxis.x * (1 - cosr), raxis.x * raxis.y * (1 - cosr) - raxis.z * sinr, raxis.x * raxis.z * (1 - cosr) + raxis.y * sinr, 0),
 		vec4(raxis.y * raxis.x * (1 - cosr) + raxis.z * sinr, cosr + raxis.y * raxis.y * (1 - cosr), raxis.y * raxis.z * (1 - cosr) - raxis.x * sinr, 0),
 		vec4(raxis.z * raxis.x * (1 - cosr) - raxis.y * sinr, raxis.z * raxis.y * (1 - cosr) + raxis.x * sinr, cosr + raxis.z * raxis.z * (1 - cosr), 0),
-		vec4(0, 0, 0, 1)
-	));
+		vec4(pos, 1)
+	);
 }

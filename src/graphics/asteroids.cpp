@@ -2,6 +2,7 @@
 #include "model.hpp"
 #include "shader.hpp"
 #include "shadows.hpp"
+#include "../settings.hpp"
 #include "../resources.hpp"
 #include "../utils.hpp"
 
@@ -147,8 +148,6 @@ static GLuint asteroidVao;
 static GLuint asteroidVertexBuffer;
 static GLuint asteroidIndexBuffer;
 
-static constexpr float DISTANCE_PER_LOD = ASTEROID_BOX_SIZE / (2 * ASTEROID_NUM_LOD_LEVELS);
-
 static GLuint asteroidsSettingsBuffer;
 static GLuint asteroidsMatrixBuffer;
 static GLuint asteroidsDrawDataBuffer;
@@ -170,6 +169,7 @@ struct {
 } uniformLocs;
 
 static uint32_t numAsteroids = 0;
+static float asteroidBoxSize;
 
 static void loadAsteroidShaders() {
 	asteroidShader.attachStage(GL_VERTEX_SHADER, "asteroid.vs.glsl");
@@ -194,9 +194,9 @@ static void loadAsteroidShaders() {
 	glProgramUniform1uiv(asteroidComputeShader.program,
 		asteroidComputeShader.findUniform("lodNumIndices"), ASTEROID_NUM_LOD_LEVELS, lodNumIndices);
 	glProgramUniform1f(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("distancePerLod"), DISTANCE_PER_LOD);
+		asteroidComputeShader.findUniform("distancePerLod"), (float)settings::lodDist);
 	glProgramUniform1f(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("wrappingModulo"), ASTEROID_BOX_SIZE);
+		asteroidComputeShader.findUniform("wrappingModulo"), asteroidBoxSize);
 	glProgramUniform1ui(asteroidComputeShader.program,
 		asteroidComputeShader.findUniform("numAsteroids"), numAsteroids);
 	
@@ -206,7 +206,7 @@ static void loadAsteroidShaders() {
 	uniformLocs.frustumPlanesShadow = asteroidComputeShader.findUniform("frustumPlanesShadow");
 }
 
-std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed);
+std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed, float asteroidBoxSize);
 
 void initializeAsteroids() {
 	sphereVertices[0] = std::vector<glm::vec3>(std::begin(baseSphereVertices), std::end(baseSphereVertices));
@@ -275,7 +275,8 @@ void initializeAsteroids() {
 	auto placeGenStartTime = std::chrono::high_resolution_clock::now();
 #endif
 	
-	std::vector<std::pair<glm::vec3, uint32_t>> generatedAsteroids = generateAsteroids(rng());
+	asteroidBoxSize = settings::worldSize * 1000;
+	std::vector<std::pair<glm::vec3, uint32_t>> generatedAsteroids = generateAsteroids(rng(), asteroidBoxSize);
 	std::vector<AsteroidSettings> asteroidSettings(generatedAsteroids.size());
 	for (size_t i = 0; i < generatedAsteroids.size(); i++) {
 		auto [pos, variant] = generatedAsteroids[i];
@@ -316,14 +317,11 @@ void prepareAsteroids(const glm::vec3& cameraPos, const glm::vec4 frustumPlanes[
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, asteroidsMatrixBuffer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, asteroidsDrawDataBuffer);
 	
-	glm::vec3 boxOffset = glm::floor(cameraPos / ASTEROID_BOX_SIZE) * ASTEROID_BOX_SIZE;
+	glm::vec3 boxOffset = glm::floor(cameraPos / asteroidBoxSize) * asteroidBoxSize;
 	glm::vec3 posInBox = cameraPos - boxOffset;
 	
-	glm::vec3 wrappingOffset = ASTEROID_BOX_SIZE * 1.5f - posInBox;
-	glm::vec3 globalOffset = cameraPos - ASTEROID_BOX_SIZE / 2;
-	
-	wrappingOffset.y = 0;
-	globalOffset.y = 0;
+	glm::vec3 wrappingOffset = asteroidBoxSize * 1.5f - posInBox;
+	glm::vec3 globalOffset = cameraPos - asteroidBoxSize / 2;
 	
 	static_assert(sizeof(*frustumPlanesShadow) == sizeof(glm::vec4) * 4);
 	

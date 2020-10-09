@@ -6,19 +6,23 @@
 constexpr float MAX_SPEED_LRUP = 10;
 constexpr float ACCEL_TIME_LRUP = 0.5f;
 constexpr float DEACCEL_TIME_LRUP = 0.5f;
-constexpr float ROLL_SPEED = 0.5f;
+
+constexpr float MAX_ROLL_SPEED = 1.0f;
+constexpr float ACCEL_TIME_ROLL = 0.2f;
+constexpr float DEACCEL_TIME_ROLL = 0.4f;
+
 constexpr float PITCH_SPEED = 0.5f;
 constexpr float YAW_SPEED = 0.4f;
 constexpr float YAW_ROLL_SPEED = 0.1f;
 
 constexpr float MOVE_LR_MAX_ROLL = 0.4f;
 
-static inline float calculateAcceleration(float dt, float move, float& vel) {
+static inline float calculateAcceleration(float dt, float move, float& vel, float deaccelRate) {
 	if (abs(move) < 0.01f) {
 		if (vel > 0) {
-			vel = std::max(vel - dt * MAX_SPEED_LRUP / DEACCEL_TIME_LRUP, 0.0f);
+			vel = std::max(vel - dt * deaccelRate, 0.0f);
 		} else {
-			vel = std::min(vel + dt * MAX_SPEED_LRUP / DEACCEL_TIME_LRUP, 0.0f);
+			vel = std::min(vel + dt * deaccelRate, 0.0f);
 		}
 		return 0;
 	}
@@ -29,12 +33,14 @@ static inline glm::mat4 makeRotationMatrix(float roll, float pitch) {
 	return glm::rotate(glm::mat4(1), roll, glm::vec3(0, 0, 1)) * glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0));
 }
 
-constexpr float SLOW_SPEED = 10;
-constexpr float FAST_SPEED = 100;
+constexpr float MIN_SPEED = 200;
+constexpr float MAX_SPEED = 500;
+constexpr float FWD_ACCEL_TIME = 6;
+constexpr float FWD_DEACCEL_TIME = 2;
 
 void Ship::update(float dt, const InputState& curInput, const InputState& prevInput) {
-	float accelX = calculateAcceleration(dt, (int)curInput.leftKey - (int)curInput.rightKey, vel.x);
-	float accelY = calculateAcceleration(dt, (int)curInput.upKey - (int)curInput.downKey, vel.y);
+	float accelX = calculateAcceleration(dt, (int)curInput.leftKey - (int)curInput.rightKey, vel.x, MAX_SPEED_LRUP / DEACCEL_TIME_LRUP);
+	float accelY = calculateAcceleration(dt, (int)curInput.upKey - (int)curInput.downKey, vel.y, MAX_SPEED_LRUP / DEACCEL_TIME_LRUP);
 	float accelLen = std::hypot(accelX, accelY);
 	if (accelLen > 1) {
 		accelX /= accelLen;
@@ -48,6 +54,10 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 		vel.y *= MAX_SPEED_LRUP / velLen;
 	}
 	
+	float accelRoll = calculateAcceleration(dt, (int)curInput.rollRightKey - (int)curInput.rollLeftKey, rollVelocity, MAX_ROLL_SPEED / DEACCEL_TIME_ROLL);
+	rollVelocity = glm::clamp(rollVelocity + accelRoll * dt, -MAX_ROLL_SPEED, MAX_ROLL_SPEED);
+	
+	
 	glm::vec3 pitchAxis = rotation * glm::vec3(1, 0, 0);
 	rotation = glm::angleAxis(accelY * PITCH_SPEED * dt, pitchAxis) * rotation;
 	
@@ -55,19 +65,19 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 	rotation = glm::angleAxis(accelX * YAW_SPEED * dt, yawAxis) * rotation;
 	
 	glm::vec3 rollAxis = rotation * glm::vec3(0, 0, 1);
-	rotation = glm::angleAxis(
-		accelX * YAW_ROLL_SPEED * dt +
-		((int)curInput.rollRightKey - (int)curInput.rollLeftKey) * ROLL_SPEED * dt
-		, rollAxis) * rotation;
+	rotation = glm::angleAxis(accelX * YAW_ROLL_SPEED * dt + rollVelocity * dt, rollAxis) * rotation;
 	
 	float desiredRollOffset = -vel.x * MOVE_LR_MAX_ROLL / MAX_SPEED_LRUP;
 	rollOffset += (desiredRollOffset - rollOffset) * std::min(3 * dt, 1.0f);
 	
-	float targetSpeed01 = curInput.moreSpeedKey ? 1 : 0;
-	engineIntensity = glm::mix(targetSpeed01, engineIntensity, std::min(0.2f * dt, 1.0f));
+	engineIntensity = glm::mix((float)curInput.moreSpeedKey, engineIntensity, std::min(0.05f * dt, 1.0f));
 	
-	forwardVel += engineIntensity * 30 * dt;
-	forwardVel -= forwardVel * dt * 0.1f;
+	if (curInput.moreSpeedKey || forwardVel < MIN_SPEED) {
+		forwardVel = std::min(forwardVel + dt * (MAX_SPEED - MIN_SPEED) / FWD_ACCEL_TIME, MAX_SPEED);
+	} else if (curInput.lessSpeedKey) {
+		forwardVel = std::max(forwardVel - dt * (MAX_SPEED - MIN_SPEED) / FWD_DEACCEL_TIME, MIN_SPEED);
+	}
+	speed01 = std::max((forwardVel - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0.0f);
 	
 	pos += rotation * (glm::vec3(0, 0, forwardVel) * dt);
 	
@@ -97,8 +107,8 @@ static constexpr float WINDOW_SPEC_LO = 3;
 static constexpr float WINDOW_SPEC_HI = 20;
 static constexpr float WINDOW_SPEC_EXP = 100;
 
-constexpr float LOW_ENGINE_COLOR = 3;
-constexpr float HIGH_ENGINE_COLOR = 8;
+constexpr float LOW_ENGINE_COLOR = 4;
+constexpr float HIGH_ENGINE_COLOR = 10;
 
 void Ship::draw() const {
 	glBindVertexArray(Model::vao);
@@ -117,7 +127,7 @@ void Ship::draw() const {
 	res::shipModel.drawMesh(res::shipModel.findMesh("Window"));
 	
 	emissiveShader.use();
-	float emissiveScale = glm::mix(LOW_ENGINE_COLOR, HIGH_ENGINE_COLOR, engineIntensity);
+	float emissiveScale = glm::mix(LOW_ENGINE_COLOR, HIGH_ENGINE_COLOR, speed01);
 	glm::vec3 scaledEmissive = emissiveScale * EMISSIVE_COLOR;
 	glUniform3fv(1, 1, (const float*)&scaledEmissive);
 	glUniformMatrix4fv(0, 1, false, (const float*)&worldMatrix);

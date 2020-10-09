@@ -1,7 +1,5 @@
 #pragma once
 
-constexpr float ASTEROID_BOX_HEIGHT = 1500;
-constexpr float ASTEROID_BOX_SIZE = 4000;
 constexpr uint32_t ASTEROID_NUM_LOD_LEVELS = 5;
 constexpr uint32_t ASTEROID_NUM_VARIANTS = 50;
 
