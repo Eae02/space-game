@@ -52,10 +52,10 @@ vec3 worldPosFromDepth(float depthH) {
 	return d.xyz / d.w;
 }
 
-const vec3 SKY_COLOR = vec3(0.242281139, 0.617206633, 0.830769956) * 0.5;
+const vec3 SKY_COLOR = pow(vec3(0.242281139, 0.617206633, 0.830769956), vec3(0.7)) * 0.5;
 const float FOG_DENSITY = 0.0003;
-const float FOG_START = 100;
-const float FOG_END = 1000;
+const float FOG_START = 300;
+const float FOG_END = 1500;
 
 #ifdef ENABLE_MOTION_BLUR
 layout(location=0) uniform mat4 prevViewProj;
