@@ -4,6 +4,7 @@
 #include "input.hpp"
 #include "resources.hpp"
 #include "ship.hpp"
+#include "settings.hpp"
 #include "utils.hpp"
 #include "graphics/shadows.hpp"
 #include "graphics/asteroids.hpp"
@@ -14,6 +15,7 @@
 
 int main() {
 	initExeDirPath();
+	settings::parse();
 	
 	if (SDL_Init(SDL_INIT_VIDEO)) {
 		std::cerr << SDL_GetError() << std::endl;
@@ -31,8 +33,12 @@ int main() {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 #endif
 	
-	SDL_Window* window = SDL_CreateWindow("Space Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1200, 800,
-		SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	uint32_t windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+	if (settings::fullscreen) {
+		windowFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+	}
+	
+	SDL_Window* window = SDL_CreateWindow("Space Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1200, 800, windowFlags);
 	if (window == nullptr) {
 		std::cerr << SDL_GetError() << std::endl;
 		return 1;
@@ -44,7 +50,7 @@ int main() {
 		return 1;
 	}
 	
-	SDL_GL_SetSwapInterval(0);
+	SDL_GL_SetSwapInterval(settings::vsync);
 	
 	GLenum glewInitStatus = glewInit();
 	if (glewInitStatus != GLEW_OK) {
@@ -94,9 +100,6 @@ int main() {
 	Ship ship;
 	ship.pos.y += ASTEROID_BOX_HEIGHT * 0.9f;
 	
-	glm::mat4 projMatrix, inverseProjMatrix;
-	int prevDrawableWidth = -1, prevDrawableHeight = -1;
-	
 	std::array<glm::vec4, 6> frustumPlanes;
 	bool frustumPlanesFrozen = false;
 	bool drawAsteroidsWireframe = false;
@@ -106,6 +109,11 @@ int main() {
 	constexpr float TIME_PER_FPS_PRINT = 3;
 	float timeAtLastFpsPrint = SDL_GetPerformanceCounter() / perfCounterFrequency;
 	uint32_t numFrames = 0;
+	
+	constexpr float LOW_FOV = 70.0f;
+	constexpr float HIGH_FOV = 110.0f;
+	constexpr float LOW_FOV_SPEED = 20.0f;
+	constexpr float HIGH_FOV_SPEED = 200.0f;
 	
 	bool shouldClose = false;
 	while (!shouldClose) {
@@ -133,8 +141,8 @@ int main() {
 					frustumPlanesFrozen = !frustumPlanesFrozen;
 				if (event.key.keysym.scancode == SDL_SCANCODE_F7)
 					drawAsteroidsWireframe = !drawAsteroidsWireframe;
-				if (event.key.keysym.scancode == SDL_SCANCODE_F6)
-					renderer::enableVolumetricLighting = !renderer::enableVolumetricLighting;
+				if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
+					shouldClose = true;
 			}
 		}
 		
@@ -149,13 +157,10 @@ int main() {
 		SDL_GL_GetDrawableSize(window, &drawableWidth, &drawableHeight);
 		renderer::updateFramebuffers(drawableWidth, drawableHeight);
 		
-		if (prevDrawableWidth != drawableWidth || prevDrawableHeight != drawableHeight) {
-			prevDrawableWidth = drawableWidth;
-			prevDrawableHeight = drawableHeight;
-			projMatrix = glm::perspectiveFov(glm::radians(75.0f), (float)drawableWidth, (float)drawableHeight, Z_NEAR, Z_FAR);
-			inverseProjMatrix = glm::inverse(projMatrix);
-		}
-		
+		float fovSpeed01 = glm::clamp((ship.forwardVel - LOW_FOV_SPEED) / (HIGH_FOV_SPEED - LOW_FOV_SPEED), 0.0f, 1.0f);
+		float fov = glm::radians(glm::mix(LOW_FOV, HIGH_FOV, fovSpeed01));
+		glm::mat4 projMatrix = glm::perspectiveFov(fov, (float)drawableWidth, (float)drawableHeight, Z_NEAR, Z_FAR);
+		glm::mat4 inverseProjMatrix = glm::inverse(projMatrix);
 		glm::mat4 vpMatrixInv = ship.viewMatrixInv * inverseProjMatrix;
 		ShadowMapMatrices shadowMapMatrices = calculateShadowMapMatrices(vpMatrixInv, sunDir);
 		

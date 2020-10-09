@@ -1,5 +1,6 @@
 #include "shader.hpp"
 #include "../utils.hpp"
+#include "../settings.hpp"
 
 #include <sstream>
 #include <fstream>
@@ -55,7 +56,8 @@ void Shader::attachStage(GLenum stage, std::string_view fileName, std::string_vi
 	GLuint shader = glCreateShader(stage);
 	
 	std::ostringstream sourceStream;
-	sourceStream << "#version 450 core\n" << extraCode;
+	sourceStream << "#version 450 core\n" << extraCode
+		<< "#define SHADOW_RES " << settings::shadowRes << "\n";
 	loadShaderCode(sourceStream, fileName);
 	
 	std::string glslCode = sourceStream.str();

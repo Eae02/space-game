@@ -15,7 +15,6 @@ const vec3 L21  = vec3( 0.0872238,  0.0744587,  0.0353051);
 const vec3 L22  = vec3( 0.6662600,  0.6706794,  0.5246173);
 
 const int PCF_SAMPLES = 3;
-const int SHADOW_MAP_RES = 1024;
 
 bool getShadowMapCoords(vec3 worldPos, out vec4 coords) {
 	for (uint cascade = 0; cascade < NUM_SHADOW_CASCADES; cascade++) {
@@ -38,7 +37,7 @@ float calcShadow(vec3 worldPos) {
 	float blur = 0.0;
 	for (int x = -sampleStart; x <= sampleStart; x++) {
 		for (int y = -sampleStart; y <= sampleStart; y++) {
-			vec2 offset = vec2(x, y) / vec2(SHADOW_MAP_RES);
+			vec2 offset = vec2(x, y) / vec2(SHADOW_RES);
 			blur += texture(shadowMap, coords + vec4(offset, 0, 0));
 		}
 	}

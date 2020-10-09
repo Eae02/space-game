@@ -27,7 +27,5 @@ namespace renderer {
 	
 	void beginMainPass();
 	
-	extern bool enableVolumetricLighting;
-	
 	void endMainPass();
 }

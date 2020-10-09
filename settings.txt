@@ -1,0 +1,5 @@
+fullscreen:false
+bloom:true
+volumetricLighting:false
+vsync:true
+shadowRes:1024

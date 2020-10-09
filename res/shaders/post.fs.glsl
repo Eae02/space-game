@@ -74,22 +74,22 @@ void main() {
 	
 	color = mix(SKY_COLOR, color, fog(distance(worldPos, rs.cameraPos)));
 	
-	if (enableVolLight == 1) {
-		const int VOL_LIGHT_SAMPLES = 64;
-		vec3 vlSampleRay = worldPos - rs.cameraPos;
-		float vlSampleRayLen = min(300, max(length(vlSampleRay) - 5, 0));
-		vec3 vlSampleRayStep = normalize(vlSampleRay) * vlSampleRayLen / VOL_LIGHT_SAMPLES;
-		float blockedSamples = 0;
-		for (int i = 1; i <= VOL_LIGHT_SAMPLES; i++) {
-			vec3 samplePos = rs.cameraPos + vlSampleRayStep * float(i);
-			vec4 coords;
-			float inScatter = 1;
-			if (getShadowMapCoords(samplePos, coords)) {
-				blockedSamples += (1 - texture(shadowMap, coords).r);
-			}
+#ifdef ENABLE_VOL_LIGHT
+	const int VOL_LIGHT_SAMPLES = 64;
+	vec3 vlSampleRay = worldPos - rs.cameraPos;
+	float vlSampleRayLen = min(300, max(length(vlSampleRay) - 5, 0));
+	vec3 vlSampleRayStep = normalize(vlSampleRay) * vlSampleRayLen / VOL_LIGHT_SAMPLES;
+	float blockedSamples = 0;
+	for (int i = 1; i <= VOL_LIGHT_SAMPLES; i++) {
+		vec3 samplePos = rs.cameraPos + vlSampleRayStep * float(i);
+		vec4 coords;
+		float inScatter = 1;
+		if (getShadowMapCoords(samplePos, coords)) {
+			blockedSamples += (1 - texture(shadowMap, coords).r);
 		}
-		color *= exp(-blockedSamples * 0.025);
 	}
+	color *= exp(-blockedSamples * 0.025);
+#endif
 	
 	color_out = vec4(vec3(1.0) - exp(-exposure * color), 1.0);
 	

@@ -2,6 +2,7 @@
 #include "texture.hpp"
 #include "shader.hpp"
 #include "../utils.hpp"
+#include "../settings.hpp"
 
 namespace renderer {
 	uint32_t frameCycleIndex = 0;
@@ -41,8 +42,13 @@ namespace renderer {
 			bloomBlurAttachments[i].format = GL_RGBA16F;
 		}
 		
+		std::string extraFSCode;
+		if (settings::volumetricLighting) {
+			extraFSCode += "#define ENABLE_VOL_LIGHT\n";
+		}
+		
 		postShader.attachStage(GL_VERTEX_SHADER, "fullscreen.vs.glsl");
-		postShader.attachStage(GL_FRAGMENT_SHADER, "post.fs.glsl");
+		postShader.attachStage(GL_FRAGMENT_SHADER, "post.fs.glsl", extraFSCode);
 		postShader.link("Post");
 		
 		bloomDownscaleShader.attachStage(GL_VERTEX_SHADER, "fullscreen.vs.glsl");
@@ -69,8 +75,10 @@ namespace renderer {
 		
 		if (framebuffersInitialized) {
 			glDeleteFramebuffers(1, &mainPassFbo);
-			glDeleteFramebuffers(BLOOM_STEPS, bloomDownscaleFbos);
-			glDeleteFramebuffers(BLOOM_STEPS, bloomBlurFbos);
+			if (settings::bloom) {
+				glDeleteFramebuffers(BLOOM_STEPS, bloomDownscaleFbos);
+				glDeleteFramebuffers(BLOOM_STEPS, bloomBlurFbos);
+			}
 		}
 		
 		fbWidth = width;
@@ -87,25 +95,27 @@ namespace renderer {
 		mainPassDepthAttachment.initialize();
 		mainPassDepthAttachment.setParamsForFramebuffer();
 		
-		glCreateFramebuffers(BLOOM_STEPS, bloomDownscaleFbos);
-		glCreateFramebuffers(BLOOM_STEPS, bloomBlurFbos);
-		for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
-			uint32_t widthDS = width >> (i + 1);
-			uint32_t heightDS = height >> (i + 1);
-			
-			bloomDownscaleAttachments[i].width = widthDS;
-			bloomDownscaleAttachments[i].height = heightDS;
-			bloomDownscaleAttachments[i].initialize();
-			bloomDownscaleAttachments[i].setParamsForFramebuffer();
-			
-			bloomBlurAttachments[i].width = widthDS;
-			bloomBlurAttachments[i].height = heightDS;
-			bloomBlurAttachments[i].initialize();
-			glTextureParameteri(bloomBlurAttachments[i].texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTextureParameteri(bloomBlurAttachments[i].texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			
-			glNamedFramebufferTexture(bloomDownscaleFbos[i], GL_COLOR_ATTACHMENT0, bloomDownscaleAttachments[i].texture, 0);
-			glNamedFramebufferTexture(bloomBlurFbos[i], GL_COLOR_ATTACHMENT0, bloomBlurAttachments[i].texture, 0);
+		if (settings::bloom) {
+			glCreateFramebuffers(BLOOM_STEPS, bloomDownscaleFbos);
+			glCreateFramebuffers(BLOOM_STEPS, bloomBlurFbos);
+			for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
+				uint32_t widthDS = width >> (i + 1);
+				uint32_t heightDS = height >> (i + 1);
+				
+				bloomDownscaleAttachments[i].width = widthDS;
+				bloomDownscaleAttachments[i].height = heightDS;
+				bloomDownscaleAttachments[i].initialize();
+				bloomDownscaleAttachments[i].setParamsForFramebuffer();
+				
+				bloomBlurAttachments[i].width = widthDS;
+				bloomBlurAttachments[i].height = heightDS;
+				bloomBlurAttachments[i].initialize();
+				glTextureParameteri(bloomBlurAttachments[i].texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTextureParameteri(bloomBlurAttachments[i].texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				
+				glNamedFramebufferTexture(bloomDownscaleFbos[i], GL_COLOR_ATTACHMENT0, bloomDownscaleAttachments[i].texture, 0);
+				glNamedFramebufferTexture(bloomBlurFbos[i], GL_COLOR_ATTACHMENT0, bloomBlurAttachments[i].texture, 0);
+			}
 		}
 		
 		glCreateFramebuffers(1, &mainPassFbo);
@@ -143,51 +153,51 @@ namespace renderer {
 		glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &attachment);
 	}
 	
-	bool enableVolumetricLighting;
-	
 	void endMainPass() {
 		glDisable(GL_DEPTH_TEST);
 		
-		//bloom downscale
-		bloomDownscaleShader.use();
-		for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
-			glBindFramebuffer(GL_FRAMEBUFFER, bloomDownscaleFbos[i]);
-			glViewport(0, 0, fbWidth >> (i + 1), fbHeight >> (i + 1));
-			invalidateAttachment(GL_COLOR_ATTACHMENT0);
-			if (i) {
-				glUniform1f(0, 0);
-				bloomDownscaleAttachments[i - 1].bind(0);
-			} else {
-				glUniform1f(0, BLOOM_MIN_BRIGHTNESS);
-				mainPassColorAttachment.bind(0);
+		if (settings::bloom) {
+			//bloom downscale
+			bloomDownscaleShader.use();
+			for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
+				glBindFramebuffer(GL_FRAMEBUFFER, bloomDownscaleFbos[i]);
+				glViewport(0, 0, fbWidth >> (i + 1), fbHeight >> (i + 1));
+				invalidateAttachment(GL_COLOR_ATTACHMENT0);
+				if (i) {
+					glUniform1f(0, 0);
+					bloomDownscaleAttachments[i - 1].bind(0);
+				} else {
+					glUniform1f(0, BLOOM_MIN_BRIGHTNESS);
+					mainPassColorAttachment.bind(0);
+				}
+				glDrawArrays(GL_TRIANGLES, 0, 3);
 			}
-			glDrawArrays(GL_TRIANGLES, 0, 3);
+			
+			//Bloom first blur
+			bloomBlurShader.use();
+			for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
+				uint32_t curWidth = fbWidth >> (i + 1);
+				uint32_t curHeight = fbHeight >> (i + 1);
+				glBindFramebuffer(GL_FRAMEBUFFER, bloomBlurFbos[i]);
+				glViewport(0, 0, curWidth, curHeight);
+				invalidateAttachment(GL_COLOR_ATTACHMENT0);
+				bloomDownscaleAttachments[i].bind(0);
+				glUniform2f(0, BLOOM_BLUR_RAD / curWidth, 0);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+			
+			//Bloom second blur
+			glBindFramebuffer(GL_FRAMEBUFFER, mainPassFbo);
+			glViewport(0, 0, fbWidth, fbHeight);
+			glEnable(GL_BLEND);
+			glUniform1f(1, BLOOM_BRIGHTNESS);
+			for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
+				bloomBlurAttachments[i].bind(0);
+				glUniform2f(0, 0, BLOOM_BLUR_RAD / (fbHeight >> (i + 1)));
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+			glDisable(GL_BLEND);
 		}
-		
-		//Bloom first blur
-		bloomBlurShader.use();
-		for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
-			uint32_t curWidth = fbWidth >> (i + 1);
-			uint32_t curHeight = fbHeight >> (i + 1);
-			glBindFramebuffer(GL_FRAMEBUFFER, bloomBlurFbos[i]);
-			glViewport(0, 0, curWidth, curHeight);
-			invalidateAttachment(GL_COLOR_ATTACHMENT0);
-			bloomDownscaleAttachments[i].bind(0);
-			glUniform2f(0, BLOOM_BLUR_RAD / curWidth, 0);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-		}
-		
-		//Bloom second blur
-		glBindFramebuffer(GL_FRAMEBUFFER, mainPassFbo);
-		glViewport(0, 0, fbWidth, fbHeight);
-		glEnable(GL_BLEND);
-		glUniform1f(1, BLOOM_BRIGHTNESS);
-		for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
-			bloomBlurAttachments[i].bind(0);
-			glUniform2f(0, 0, BLOOM_BLUR_RAD / (fbHeight >> (i + 1)));
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-		}
-		glDisable(GL_BLEND);
 		
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		invalidateAttachment(GL_COLOR);
@@ -195,7 +205,6 @@ namespace renderer {
 		postShader.use();
 		mainPassColorAttachment.bind(0);
 		mainPassDepthAttachment.bind(1);
-		glUniform1ui(0, enableVolumetricLighting);
 		glBindTextureUnit(2, skyboxTexture);
 		glBindTextureUnit(3, shadowMap);
 		

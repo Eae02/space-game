@@ -1,15 +1,15 @@
 #include "shadows.hpp"
+#include "../settings.hpp"
 #include "../utils.hpp"
 
 GLuint shadowMap;
 
 static GLuint shadowMapFbos[NUM_SHADOW_CASCADES];
 
-static constexpr uint32_t SHADOW_MAP_RES = 1024;
-
 void initializeShadowMapping() {
 	glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &shadowMap);
-	glTextureStorage3D(shadowMap, 1, GL_DEPTH_COMPONENT32F, SHADOW_MAP_RES, SHADOW_MAP_RES, NUM_SHADOW_CASCADES);
+	glTextureStorage3D(shadowMap, 1, GL_DEPTH_COMPONENT32F,
+		settings::shadowRes, settings::shadowRes, NUM_SHADOW_CASCADES);
 	
 	glTextureParameteri(shadowMap, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTextureParameteri(shadowMap, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -88,7 +88,7 @@ void renderShadows(const std::function<void(uint32_t)>& renderCallback) {
 	
 	for (uint32_t cascade = 0; cascade < NUM_SHADOW_CASCADES; cascade++) {
 		glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFbos[cascade]);
-		glViewport(0, 0, SHADOW_MAP_RES, SHADOW_MAP_RES);
+		glViewport(0, 0, settings::shadowRes, settings::shadowRes);
 		
 		const float clearValue = 1;
 		glClearBufferfv(GL_DEPTH, 0, &clearValue);
