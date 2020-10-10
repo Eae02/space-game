@@ -11,7 +11,6 @@
 #include "graphics/model.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/renderer.hpp"
-#include "graphics/stars.hpp"
 
 int main() {
 	initExeDirPath();
@@ -64,6 +63,11 @@ int main() {
 	glBlendEquation(GL_FUNC_ADD);
 	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &renderer::uboAlignment);
 	
+	for (int i = 0; i < 3; i++) {
+		glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, i, &maxComputeWorkGroupSize[i]);
+	}
+	glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &maxComputeWorkGroupInvocations);
+	
 #ifdef DEBUG
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	glDebugMessageCallback([] (GLenum, GLenum, GLuint id, GLenum severity, GLsizei, const GLchar* message, const void*) {
@@ -82,7 +86,6 @@ int main() {
 	res::load();
 	
 	renderer::initialize();
-	stars::initialize();
 	Ship::initShaders();
 	initializeParticles();
 	initializeAsteroids();
@@ -108,7 +111,7 @@ int main() {
 	uint32_t numFrames = 0;
 	
 	constexpr float LOW_FOV = 75.0f;
-	constexpr float HIGH_FOV = 100.0f;
+	constexpr float HIGH_FOV = 110.0f;
 	
 	bool shouldClose = false;
 	while (!shouldClose) {
@@ -175,7 +178,6 @@ int main() {
 		prepareAsteroids(renderSettings.cameraPos, frustumPlanes.data(), shadowMapMatrices.frustumPlanes);
 		
 		renderShadows([&] (uint32_t cascade) {
-			ship.drawShadow(shadowMapMatrices.matrices[cascade]);
 			drawAsteroidsShadow(cascade, shadowMapMatrices.matrices[cascade]);
 		});
 		

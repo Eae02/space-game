@@ -5,6 +5,9 @@
 constexpr float Z_NEAR = 0.1f;
 constexpr float Z_FAR = 5000.0f;
 
+extern glm::ivec3 maxComputeWorkGroupSize;
+extern int maxComputeWorkGroupInvocations;
+
 template <typename T, typename U>
 constexpr inline auto roundToNextMul(T value, U multiple) {
 	auto valModMul = value % multiple;

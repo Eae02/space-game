@@ -1,5 +1,8 @@
 #include "utils.hpp"
 
+glm::ivec3 maxComputeWorkGroupSize;
+int maxComputeWorkGroupInvocations;
+
 static inline glm::vec4 createFrustumPlane(const glm::vec3& p1, const glm::vec3& p2,
                                            const glm::vec3& p3, const glm::vec3& normalTarget)
 {

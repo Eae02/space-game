@@ -34,8 +34,8 @@ static inline glm::mat4 makeRotationMatrix(float roll, float pitch) {
 }
 
 constexpr float MIN_SPEED = 100;
-constexpr float MAX_SPEED = 500;
-constexpr float FWD_ACCEL_TIME = 6;
+constexpr float MAX_SPEED = 750;
+constexpr float FWD_ACCEL_TIME = 8;
 constexpr float FWD_DEACCEL_TIME = 2;
 
 void Ship::update(float dt, const InputState& curInput, const InputState& prevInput) {
@@ -96,7 +96,7 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 	viewMatrixInv = glm::inverse(viewMatrix);
 }
 
-static Shader modelShader, modelShaderShadow, emissiveShader;
+static Shader modelShader, emissiveShader;
 
 static const glm::vec3 EMISSIVE_COLOR = glm::convertSRGBToLinear(glm::vec3(153, 196, 233) / 255.0f);
 
@@ -136,22 +136,10 @@ void Ship::draw() const {
 	res::shipModel.drawMesh(res::shipModel.findMesh("BlueS"));
 }
 
-void Ship::drawShadow(const glm::mat4& shadowMatrix) const {
-	glBindVertexArray(Model::vao);
-	modelShaderShadow.use();
-	glm::mat4 shadowWorldMatrix = shadowMatrix * worldMatrix;
-	glUniformMatrix4fv(0, 1, false, (const float*)&shadowWorldMatrix);
-	res::shipModel.bind();
-	res::shipModel.drawAllMeshes();
-}
-
 void Ship::initShaders() {
 	modelShader.attachStage(GL_VERTEX_SHADER, "model.vs.glsl");
 	modelShader.attachStage(GL_FRAGMENT_SHADER, "model.fs.glsl");
 	modelShader.link("model");
-
-	modelShaderShadow.attachStage(GL_VERTEX_SHADER, "model_shadow.vs.glsl");
-	modelShaderShadow.link("model_shadow");
 
 	emissiveShader.attachStage(GL_VERTEX_SHADER, "model.vs.glsl");
 	emissiveShader.attachStage(GL_FRAGMENT_SHADER, "emissive.fs.glsl");

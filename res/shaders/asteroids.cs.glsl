@@ -39,6 +39,8 @@ uniform uint lodVertexOffsets[NUM_LOD_LEVELS];
 uniform uint lodFirstIndex[NUM_LOD_LEVELS];
 uniform uint lodNumIndices[NUM_LOD_LEVELS];
 
+const float SCALE_FADE_BEGIN = 0.9;
+
 int getLodLevel(float dist, float bias) {
 	return NUM_LOD_LEVELS - 1 - clamp(int(dist / distancePerLod - bias), 0, NUM_LOD_LEVELS - 1);
 }
@@ -47,7 +49,13 @@ void main() {
 	uint asteroidIdx = gl_GlobalInvocationID.x;
 	if (asteroidIdx > numAsteroids)
 		return;
-	vec3 pos = mod(asteroidSettings[asteroidIdx].pos + wrappingOffset, vec3(wrappingModulo)) + globalOffset;
+	
+	vec3 posNoGlobalOffset = mod(asteroidSettings[asteroidIdx].pos + wrappingOffset, vec3(wrappingModulo));
+	vec3 pos = posNoGlobalOffset + globalOffset;
+	
+	vec3 distToWrapEdge3 = abs(posNoGlobalOffset - vec3(wrappingModulo / 2));
+	float distToWrapEdge = max(max(distToWrapEdge3.x, distToWrapEdge3.y), distToWrapEdge3.z) / (wrappingModulo / 2);
+	float scale = 1 - clamp((distToWrapEdge - SCALE_FADE_BEGIN) / (1 - SCALE_FADE_BEGIN), 0, 1);
 	
 	uint drawArgsIdx = asteroidIdx * 5;
 	uint drawArgsStride = numAsteroids * 5;
@@ -100,10 +108,13 @@ void main() {
 	float sinr = sin(rotation);
 	float cosr = cos(rotation);
 	vec3 raxis = normalize(unpackSnorm4x8(asteroidSettings[asteroidIdx].rotationAxis).xyz);
+	vec3 rx = vec3(cosr + raxis.x * raxis.x * (1 - cosr), raxis.x * raxis.y * (1 - cosr) - raxis.z * sinr, raxis.x * raxis.z * (1 - cosr) + raxis.y * sinr);
+	vec3 ry = vec3(raxis.y * raxis.x * (1 - cosr) + raxis.z * sinr, cosr + raxis.y * raxis.y * (1 - cosr), raxis.y * raxis.z * (1 - cosr) - raxis.x * sinr);
+	vec3 rz = vec3(raxis.z * raxis.x * (1 - cosr) - raxis.y * sinr, raxis.z * raxis.y * (1 - cosr) + raxis.x * sinr, cosr + raxis.z * raxis.z * (1 - cosr));
 	transformsOut[asteroidIdx] = mat4(
-		vec4(cosr + raxis.x * raxis.x * (1 - cosr), raxis.x * raxis.y * (1 - cosr) - raxis.z * sinr, raxis.x * raxis.z * (1 - cosr) + raxis.y * sinr, 0),
-		vec4(raxis.y * raxis.x * (1 - cosr) + raxis.z * sinr, cosr + raxis.y * raxis.y * (1 - cosr), raxis.y * raxis.z * (1 - cosr) - raxis.x * sinr, 0),
-		vec4(raxis.z * raxis.x * (1 - cosr) - raxis.y * sinr, raxis.z * raxis.y * (1 - cosr) + raxis.x * sinr, cosr + raxis.z * raxis.z * (1 - cosr), 0),
+		vec4(rx * scale, 0),
+		vec4(ry * scale, 0),
+		vec4(rz * scale, 0),
 		vec4(pos, 1)
 	);
 }

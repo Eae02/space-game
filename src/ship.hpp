@@ -4,7 +4,6 @@ struct Ship {
 	void update(float dt, const struct InputState& curInput, const struct InputState& prevInput);
 	
 	void draw() const;
-	void drawShadow(const glm::mat4& shadowMatrix) const;
 	
 	static void initShaders();
 	

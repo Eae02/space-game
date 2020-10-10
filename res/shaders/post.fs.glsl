@@ -52,7 +52,7 @@ vec3 worldPosFromDepth(float depthH) {
 	return d.xyz / d.w;
 }
 
-const vec3 SKY_COLOR = pow(vec3(0.242281139, 0.617206633, 0.830769956), vec3(0.7)) * 0.5;
+const vec3 SKY_COLOR = pow(vec3(0.242281139, 0.617206633, 0.830769956), vec3(0.7)) * 0.7;
 const float FOG_DENSITY = 0.0003;
 const float FOG_START = 300;
 const float FOG_END = 1500;
@@ -69,9 +69,6 @@ float fog(float dist) {
 }
 
 void main() {
-	vec4 farFrustumVertex = rs.vpMatrixInv * vec4(screenCoord_v * 2 - 1, 1, 1);
-	vec4 nearFrustumVertex = rs.vpMatrixInv * vec4(screenCoord_v * 2 - 1, 0, 1);
-	vec3 eyeVector = farFrustumVertex.xyz / farFrustumVertex.w - nearFrustumVertex.xyz / nearFrustumVertex.w;
 	float depthH = texture(depthSampler, screenCoord_v).r;
 	vec3 worldPos = worldPosFromDepth(depthH);
 	
@@ -80,7 +77,7 @@ void main() {
 	bool isShip = color4.a == 1;
 	
 	//if (depthH == 1) {
-	//	color = texture(skybox, eyeVector).rgb;
+	//	color = texture(skybox, worldPos - rs.cameraPos).rgb;
 	//}
 	
 #ifdef ENABLE_MOTION_BLUR
