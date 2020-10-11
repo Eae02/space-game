@@ -3,7 +3,6 @@
 #include "../utils.hpp"
 
 GLuint shadowMap;
-GLuint shadowSamplerNoCompare;
 
 static GLuint shadowMapFbos[NUM_SHADOW_CASCADES];
 
@@ -19,12 +18,6 @@ void initializeShadowMapping() {
 	glTextureParameteri(shadowMap, GL_TEXTURE_BASE_LEVEL, 0);
 	glTextureParameteri(shadowMap, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTextureParameteri(shadowMap, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	
-	glCreateSamplers(1, &shadowSamplerNoCompare);
-	glSamplerParameteri(shadowSamplerNoCompare, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glSamplerParameteri(shadowSamplerNoCompare, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glSamplerParameteri(shadowSamplerNoCompare, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glSamplerParameteri(shadowSamplerNoCompare, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	
 	for (uint32_t i = 0; i < NUM_SHADOW_CASCADES; i++) {
 		glCreateFramebuffers(1, &shadowMapFbos[i]);

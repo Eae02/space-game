@@ -2,7 +2,6 @@
 
 #include <functional>
 
-extern GLuint shadowSamplerNoCompare;
 extern GLuint shadowMap;
 
 static constexpr uint32_t NUM_SHADOW_CASCADES = 3;

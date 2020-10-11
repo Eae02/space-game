@@ -4,7 +4,6 @@ out vec4 color_out;
 
 layout(binding=0) uniform sampler2D texIn;
 layout(binding=1) uniform sampler2D depthSampler;
-layout(binding=2) uniform sampler2DArray shadowMap;
 
 const float exposure = 1;
 
@@ -75,24 +74,6 @@ void main() {
 	vec4 color4 = texture(texIn, screenCoord_v);
 	vec3 color = color4.rgb;
 	bool isShip = color4.a == 1;
-	
-#ifdef ENABLE_MOTION_BLUR
-	if (!isShip) {
-		vec4 prevScreenPos4 = prevViewProj * vec4(worldPos, 1);
-		vec2 prevScreenPos = (prevScreenPos4.xy / prevScreenPos4.w) * 0.5 + 0.5;
-		vec2 blurVector = (prevScreenPos - screenCoord_v) * motionBlurRadius;
-		color *= BLUR_KERNEL[0];
-		float weightSum = BLUR_KERNEL[0];
-		for (int i = 1; i < BLUR_KERNEL.length(); i++) {
-			vec4 c1 = texture(texIn, screenCoord_v + blurVector * i);
-			vec4 c2 = texture(texIn, screenCoord_v - blurVector * i);
-			color += c1.rgb * (1 - c1.a) * BLUR_KERNEL[i];
-			color += c2.rgb * (1 - c2.a) * BLUR_KERNEL[i];
-			weightSum += (2 - c1.a - c2.a) * BLUR_KERNEL[i];
-		}
-		color /= weightSum;
-	}
-#endif
 	
 	color += calcGodRays() * rs.sunColor;
 	

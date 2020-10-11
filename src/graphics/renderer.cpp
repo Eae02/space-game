@@ -44,20 +44,12 @@ namespace renderer {
 			bloomBlurAttachments[i].format = GL_RGBA16F;
 		}
 		
-		std::string extraFSCode;
-		if (settings::volumetricLighting) {
-			extraFSCode += "#define ENABLE_VOL_LIGHT\n";
-		}
-		if (settings::motionBlur) {
-			extraFSCode += "#define ENABLE_MOTION_BLUR\n";
-		}
-		
 		skyboxShader.attachStage(GL_VERTEX_SHADER, "skybox.vs.glsl");
 		skyboxShader.attachStage(GL_FRAGMENT_SHADER, "skybox.fs.glsl");
 		skyboxShader.link("Skybox");
 		
 		postShader.attachStage(GL_VERTEX_SHADER, "fullscreen.vs.glsl");
-		postShader.attachStage(GL_FRAGMENT_SHADER, "post.fs.glsl", extraFSCode);
+		postShader.attachStage(GL_FRAGMENT_SHADER, "post.fs.glsl");
 		postShader.link("Post");
 		
 		bloomDownscaleShader.attachStage(GL_VERTEX_SHADER, "fullscreen.vs.glsl");
@@ -219,13 +211,6 @@ namespace renderer {
 		postShader.use();
 		mainPassColorAttachment.bind(0);
 		mainPassDepthAttachment.bind(1);
-		glBindSampler(2, shadowSamplerNoCompare);
-		glBindTextureUnit(2, shadowMap);
-		
-		if (settings::motionBlur) {
-			glUniformMatrix4fv(0, 1, false, (const float*)&prevViewProj);
-			glUniform1f(1, MOTION_BLUR_INTENSITY / dt);
-		}
 		
 		glEnable(GL_FRAMEBUFFER_SRGB);
 		glDrawArrays(GL_TRIANGLES, 0, 3);

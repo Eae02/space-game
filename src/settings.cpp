@@ -6,9 +6,7 @@
 namespace settings {
 	bool fullscreen         = false;
 	bool bloom              = true;
-	bool volumetricLighting = false;
 	bool vsync              = false;
-	bool motionBlur         = true;
 	bool mouseInput         = true;
 	uint32_t shadowRes      = 1024;
 	uint32_t worldSize      = 4;
@@ -49,8 +47,6 @@ namespace settings {
 		getBool("fullscreen", fullscreen);
 		getBool("bloom", bloom);
 		getBool("vsync", vsync);
-		getBool("volumetricLighting", volumetricLighting);
-		getBool("motionBlur", motionBlur);
 		getBool("mouseInput", mouseInput);
 		getUInt("shadowRes", shadowRes, 128);
 		getUInt("worldSize", worldSize, 1);
