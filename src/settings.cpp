@@ -9,6 +9,7 @@ namespace settings {
 	bool volumetricLighting = false;
 	bool vsync              = false;
 	bool motionBlur         = true;
+	bool mouseInput         = true;
 	uint32_t shadowRes      = 1024;
 	uint32_t worldSize      = 4;
 	uint32_t lodDist        = 300;
@@ -50,6 +51,7 @@ namespace settings {
 		getBool("vsync", vsync);
 		getBool("volumetricLighting", volumetricLighting);
 		getBool("motionBlur", motionBlur);
+		getBool("mouseInput", mouseInput);
 		getUInt("shadowRes", shadowRes, 128);
 		getUInt("worldSize", worldSize, 1);
 		worldSize = glm::clamp(worldSize, 1U, 5U);

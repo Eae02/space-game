@@ -20,3 +20,5 @@ struct Texture {
 	
 	void bind(int unit) const;
 };
+
+GLuint loadTextureCube(const std::string& dirPath, int resolution);

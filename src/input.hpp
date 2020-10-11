@@ -9,6 +9,10 @@ struct InputState {
 	bool rollRightKey = false;
 	bool moreSpeedKey = false;
 	bool lessSpeedKey = false;
+	int mouseX = 0;
+	int mouseY = 0;
+	int mouseDX = 0;
+	int mouseDY = 0;
 	
 	void keyStateChanged(int scancode, bool newState);
 };

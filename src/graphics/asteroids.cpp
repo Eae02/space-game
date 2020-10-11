@@ -97,11 +97,10 @@ AsteroidVariant generateSingleAsteroidVariant(std::mt19937& rng, std::vector<Ast
 	mainNoise.SetFrequency(0.02f);
 	mainNoise.SetSeed(rng());
 	
-	noise::module::Perlin ridgeNoise;
+	noise::module::RidgedMulti ridgeNoise;
 	ridgeNoise.SetOctaveCount(6);
-	ridgeNoise.SetPersistence(0.6f);
 	ridgeNoise.SetLacunarity(1.5f);
-	ridgeNoise.SetFrequency(0.05f);
+	ridgeNoise.SetFrequency(0.04f);
 	ridgeNoise.SetSeed(rng());
 	
 	constexpr float MIN_SIZE = 20;
@@ -119,9 +118,9 @@ AsteroidVariant generateSingleAsteroidVariant(std::mt19937& rng, std::vector<Ast
 		
 		for (const glm::vec3& vertex : sphereVertices[lod]) {
 			glm::vec3 scaledVertex = vertex * size;
-			float noiseValue = (float)mainNoise.GetValue(scaledVertex.x, scaledVertex.y, scaledVertex.z);
-			float ridgeNoiseValue = 1 - std::abs((float)ridgeNoise.GetValue(scaledVertex.x, scaledVertex.y, scaledVertex.z));
-			float radius = glm::mix(innerRadius, 1.0f, noiseValue * 0.5f + 0.5f) * glm::mix(0.8f, 1.0f, ridgeNoiseValue);
+			float noiseValue = (float)mainNoise.GetValue(scaledVertex.x, scaledVertex.y, scaledVertex.z) * 0.5f + 0.5f;
+			float ridgeNoiseValue = (float)ridgeNoise.GetValue(scaledVertex.x, scaledVertex.y, scaledVertex.z) * 0.5f + 0.5f;
+			float radius = glm::mix(innerRadius, 1.0f, noiseValue) * glm::mix(0.8f, 1.0f, ridgeNoiseValue);
 			vertices.push_back(AsteroidVertex { scaledVertex * radius, 0 });
 		}
 		

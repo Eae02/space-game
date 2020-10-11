@@ -6,6 +6,7 @@ Texture res::shipAlbedo;
 Texture res::shipNormals;
 Texture res::asteroidAlbedo;
 Texture res::asteroidNormals;
+GLuint res::skybox;
 
 void res::load() {
 	shipModel.loadObj(exeDirPath + "res/ship.obj");
@@ -13,12 +14,5 @@ void res::load() {
 	shipNormals.load(exeDirPath + "res/textures/shipNormals.png", false, true);
 	asteroidAlbedo.load(exeDirPath + "res/textures/asteroidDiffuse.png", true, true);
 	asteroidNormals.load(exeDirPath + "res/textures/asteroidNormals.png", false, true);
-}
-
-void res::destroy() {
-	shipModel.destroy();
-	shipAlbedo.destroy();
-	shipNormals.destroy();
-	asteroidAlbedo.destroy();
-	asteroidNormals.destroy();
+	skybox = loadTextureCube(exeDirPath + "res/textures/skybox/", 2048);
 }

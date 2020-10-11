@@ -52,3 +52,37 @@ void Texture::destroy() {
 void Texture::bind(int unit) const {
 	glBindTextureUnit(unit, texture);
 }
+
+GLuint loadTextureCube(const std::string& dirPath, int resolution) {
+	GLuint texture;
+	glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &texture);
+	glTextureStorage2D(texture, (int)log2(resolution) + 1, GL_SRGB8, resolution, resolution);
+	
+	static std::string layerNames[] = {
+		"1.png",
+		"3.png",
+		"5.png",
+		"6.png",
+		"2.png",
+		"4.png"
+	};
+	
+	for (int i = 0; i < 6; i++) {
+		std::string path = dirPath + layerNames[i];
+		
+		int layerWidth, layerHeight;
+		uint8_t* data = stbi_load(path.c_str(), (int*)&layerWidth, (int*)&layerHeight, nullptr, 4);
+		if (data == nullptr) {
+			std::cerr << stbi_failure_reason() << std::endl;
+			std::abort();
+		}
+		assert(layerWidth == resolution && layerHeight == resolution);
+		
+		glTextureSubImage3D(texture, 0, 0, 0, i, resolution, resolution, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		free(data);
+	}
+	
+	glGenerateTextureMipmap(texture);
+	
+	return texture;
+}

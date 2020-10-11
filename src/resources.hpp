@@ -9,7 +9,7 @@ namespace res {
 	extern Texture shipNormals;
 	extern Texture asteroidAlbedo;
 	extern Texture asteroidNormals;
+	extern GLuint skybox;
 	
 	void load();
-	void destroy();
 }

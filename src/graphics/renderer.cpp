@@ -1,6 +1,7 @@
 #include "renderer.hpp"
 #include "texture.hpp"
 #include "shader.hpp"
+#include "../resources.hpp"
 #include "../utils.hpp"
 #include "../settings.hpp"
 
@@ -29,6 +30,7 @@ namespace renderer {
 	static uint64_t renderSettingsOffset;
 	static char* renderSettingsUboMemory;
 	
+	static Shader skyboxShader;
 	static Shader baseLightShader;
 	static Shader bloomDownscaleShader;
 	static Shader bloomBlurShader;
@@ -49,6 +51,10 @@ namespace renderer {
 		if (settings::motionBlur) {
 			extraFSCode += "#define ENABLE_MOTION_BLUR\n";
 		}
+		
+		skyboxShader.attachStage(GL_VERTEX_SHADER, "skybox.vs.glsl");
+		skyboxShader.attachStage(GL_FRAGMENT_SHADER, "skybox.fs.glsl");
+		skyboxShader.link("Skybox");
 		
 		postShader.attachStage(GL_VERTEX_SHADER, "fullscreen.vs.glsl");
 		postShader.attachStage(GL_FRAGMENT_SHADER, "post.fs.glsl", extraFSCode);
@@ -156,11 +162,11 @@ namespace renderer {
 		glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &attachment);
 	}
 	
-	void renderParticles() {
-		
-	}
-	
 	void endMainPass(const glm::mat4& prevViewProj, float dt) {
+		skyboxShader.use();
+		glBindTextureUnit(0, res::skybox);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		
 		glDisable(GL_DEPTH_TEST);
 		
 		if (settings::bloom) {

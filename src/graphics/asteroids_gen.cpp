@@ -5,7 +5,7 @@
 #include <random>
 #include <noise/noise.h>
 
-static constexpr float SPACING_LO = 5;
+static constexpr float SPACING_LO = 15;
 static constexpr float SPACING_HI = 40;
 
 struct ActiveSetEntry {

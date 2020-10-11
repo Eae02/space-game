@@ -55,6 +55,10 @@ int main() {
 		return 1;
 	}
 	
+	if (settings::mouseInput) {
+		SDL_SetRelativeMouseMode(SDL_TRUE);
+	}
+	
 	std::cout << "using opengl device " << glGetString(GL_RENDERER) << std::endl;
 	
 	glEnable(GL_CULL_FACE);
@@ -120,6 +124,8 @@ int main() {
 		const float dt = (thisFrameBegin - lastFrameBegin) / (float)perfCounterFrequency;
 		lastFrameBegin = thisFrameBegin;
 		prevInput = curInput;
+		curInput.mouseDX = 0;
+		curInput.mouseDY = 0;
 		
 		if (currentTime - timeAtLastFpsPrint > TIME_PER_FPS_PRINT) {
 			std::cout << "avg fps: " << (numFrames / (currentTime - timeAtLastFpsPrint)) << std::endl;
@@ -142,7 +148,12 @@ int main() {
 				if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
 					shouldClose = true;
 			}
+			if (event.type == SDL_MOUSEMOTION) {
+				curInput.mouseDX += event.motion.xrel;
+				curInput.mouseDY += event.motion.yrel;
+			}
 		}
+		SDL_GetMouseState(&curInput.mouseX, &curInput.mouseY);
 		
 		ship.update(dt, curInput, prevInput);
 		
@@ -199,8 +210,6 @@ int main() {
 		numFrames++;
 		prevViewProj = renderSettings.vpMatrix;
 	}
-	
-	res::destroy();
 	
 	SDL_GL_DeleteContext(glContext);
 	SDL_DestroyWindow(window);

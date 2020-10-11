@@ -4,5 +4,6 @@ volumetricLighting:true
 vsync:false
 motionBlur:false
 shadowRes:2048
-worldSize:3
+mouseInput:false
+worldSize:4
 lodDist:200

@@ -1,10 +1,11 @@
 #include "ship.hpp"
 #include "input.hpp"
 #include "resources.hpp"
+#include "settings.hpp"
 #include "graphics/shader.hpp"
 
 constexpr float MAX_SPEED_LRUP = 10;
-constexpr float ACCEL_TIME_LRUP = 0.5f;
+constexpr float ACCEL_TIME_LRUP = 0.3f;
 constexpr float DEACCEL_TIME_LRUP = 0.5f;
 
 constexpr float MAX_ROLL_SPEED = 1.0f;
@@ -29,23 +30,24 @@ static inline float calculateAcceleration(float dt, float move, float& vel, floa
 	return move;
 }
 
-static inline glm::mat4 makeRotationMatrix(float roll, float pitch) {
-	return glm::rotate(glm::mat4(1), roll, glm::vec3(0, 0, 1)) * glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0));
-}
-
 constexpr float MIN_SPEED = 100;
 constexpr float MAX_SPEED = 750;
 constexpr float FWD_ACCEL_TIME = 8;
 constexpr float FWD_DEACCEL_TIME = 2;
 
+constexpr float MOUSE_MOVE_SENSITIVITY = 0.02f;
+constexpr float MAX_MOUSE_ACCEL = 50.0f;
+
 void Ship::update(float dt, const InputState& curInput, const InputState& prevInput) {
-	float accelX = calculateAcceleration(dt, (int)curInput.leftKey - (int)curInput.rightKey, vel.x, MAX_SPEED_LRUP / DEACCEL_TIME_LRUP);
-	float accelY = calculateAcceleration(dt, (int)curInput.upKey - (int)curInput.downKey, vel.y, MAX_SPEED_LRUP / DEACCEL_TIME_LRUP);
-	float accelLen = std::hypot(accelX, accelY);
-	if (accelLen > 1) {
-		accelX /= accelLen;
-		accelY /= accelLen;
+	float moveX = (float)curInput.leftKey - (float)curInput.rightKey;
+	float moveY = (float)curInput.upKey - (float)curInput.downKey;
+	if (settings::mouseInput) {
+		moveX = glm::clamp(moveX - curInput.mouseDX * MOUSE_MOVE_SENSITIVITY, -MAX_MOUSE_ACCEL, MAX_MOUSE_ACCEL);
+		moveY = glm::clamp(moveY + curInput.mouseDY * MOUSE_MOVE_SENSITIVITY, -MAX_MOUSE_ACCEL, MAX_MOUSE_ACCEL);
 	}
+	
+	float accelX = calculateAcceleration(dt, moveX, vel.x, MAX_SPEED_LRUP / DEACCEL_TIME_LRUP);
+	float accelY = calculateAcceleration(dt, moveY, vel.y, MAX_SPEED_LRUP / DEACCEL_TIME_LRUP);
 	vel.x += accelX * dt * (MAX_SPEED_LRUP / ACCEL_TIME_LRUP);
 	vel.y += accelY * dt * (MAX_SPEED_LRUP / ACCEL_TIME_LRUP);
 	float velLen = std::hypot(vel.x, vel.y);
