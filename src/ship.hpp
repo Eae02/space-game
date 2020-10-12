@@ -11,6 +11,9 @@ struct Ship {
 	glm::mat4 viewMatrix;
 	glm::mat4 viewMatrixInv;
 	
+	bool stopped = false;
+	
+	glm::ivec3 boxIndex;
 	glm::vec3 pos { 0, 0, 0 };
 	glm::vec3 vel { 0, 0, 5 };
 	

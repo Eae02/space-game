@@ -8,6 +8,9 @@ struct AsteroidVariant {
 	float size;
 };
 
+extern uint32_t numAsteroids;
+extern float asteroidBoxSize;
+
 extern AsteroidVariant asteroidVariants[ASTEROID_NUM_VARIANTS];
 
 void initializeAsteroids();

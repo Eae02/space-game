@@ -61,7 +61,7 @@ void main() {
 	uint drawArgsStride = numAsteroids * 5;
 	
 	//Lod
-	float distToEdge = max(distance(rs.cameraPos, pos) - asteroidSettings[asteroidIdx].radius, 0);
+	float distToEdge = distance(rs.cameraPos, pos);
 	int lodLevel = getLodLevel(distToEdge, 1);
 	
 	//Frustum culling

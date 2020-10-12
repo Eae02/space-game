@@ -15,7 +15,7 @@ struct ActiveSetEntry {
 	int remAttempts;
 };
 
-std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed, float asteroidBoxSize) {
+std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed) {
 	std::vector<ActiveSetEntry> activeSet;
 	
 	std::mt19937 rng(seed);

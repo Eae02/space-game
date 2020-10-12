@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shadows.hpp"
+#include "texture.hpp"
 
 struct RenderSettings {
 	glm::mat4 vpMatrix;
@@ -19,11 +20,21 @@ namespace renderer {
 	extern uint32_t frameCycleIndex;
 	extern int uboAlignment;
 	
+	extern Texture mainPassColorAttachment;
+	extern Texture mainPassDepthAttachment;
+	extern GLuint mainPassFbo;
+	
+	extern Texture targetsPassColorAttachment;
+	extern Texture targetsPassDepthAttachment;
+	extern GLuint targetsPassFbo;
+	
 	void initialize();
 	
 	void updateFramebuffers(uint32_t width, uint32_t height);
 	
 	void updateRenderSettings(const RenderSettings& renderSettings);
+	
+	void drawSkybox();
 	
 	void beginMainPass();
 	

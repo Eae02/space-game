@@ -2,6 +2,7 @@
 #include "input.hpp"
 #include "resources.hpp"
 #include "settings.hpp"
+#include "graphics/asteroids.hpp"
 #include "graphics/shader.hpp"
 
 constexpr float MAX_SPEED_LRUP = 10;
@@ -75,7 +76,12 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 	engineIntensity += dt * 2.0f * (curInput.moreSpeedKey ? 1 : -1);
 	engineIntensity = glm::clamp(engineIntensity, 0.0f, 1.0f);
 	
-	if (curInput.moreSpeedKey || forwardVel < MIN_SPEED) {
+	if (curInput.moreSpeedKey)
+		stopped = false;
+	
+	if (stopped) {
+		forwardVel = std::max(forwardVel - dt * (MAX_SPEED - MIN_SPEED) / FWD_DEACCEL_TIME, 0.0f);
+	} else if (curInput.moreSpeedKey || forwardVel < MIN_SPEED) {
 		forwardVel = std::min(forwardVel + dt * (MAX_SPEED - MIN_SPEED) / FWD_ACCEL_TIME, MAX_SPEED);
 	} else if (curInput.lessSpeedKey) {
 		forwardVel = std::max(forwardVel - dt * (MAX_SPEED - MIN_SPEED) / FWD_DEACCEL_TIME, MIN_SPEED);
@@ -83,6 +89,10 @@ void Ship::update(float dt, const InputState& curInput, const InputState& prevIn
 	speed01 = std::max((forwardVel - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0.0f);
 	
 	pos += rotation * (glm::vec3(0, 0, forwardVel) * dt);
+	
+	glm::ivec3 boxOffset(glm::floor(pos / asteroidBoxSize));
+	boxIndex += boxOffset;
+	pos -= glm::vec3(boxOffset) * asteroidBoxSize;
 	
 	worldMatrix =
 		glm::translate(glm::mat4(1), pos) *

@@ -51,21 +51,8 @@ vec3 worldPosFromDepth(float depthH) {
 	return d.xyz / d.w;
 }
 
-const vec3 SKY_COLOR = vec3(0.242281139, 0.617206633, 0.830769956) * 0.7;
-const float FOG_DENSITY = 0.00025;
-const float FOG_START = 300;
-const float FOG_END = 1500;
-
-#ifdef ENABLE_MOTION_BLUR
-layout(location=0) uniform mat4 prevViewProj;
-layout(location=1) uniform float motionBlurRadius;
-#endif
-
-const float BLUR_KERNEL[] = float[] (0.382928, 0.241732, 0.060598, 0.005977, 0.000229);
-
-float fog(float dist) {
-	return exp((clamp(dist, FOG_START, FOG_END) - FOG_START) * -FOG_DENSITY);
-}
+const float FOG_START = 200;
+#include fog.glh
 
 void main() {
 	float depthH = texture(depthSampler, screenCoord_v).r;
@@ -77,7 +64,7 @@ void main() {
 	
 	color += calcGodRays() * rs.sunColor;
 	
-	color = mix(SKY_COLOR, color, fog(distance(worldPos, rs.cameraPos)));
+	color = fog(color, distance(worldPos, rs.cameraPos) - FOG_START);
 	
 	color_out = vec4(vec3(1.0) - exp(-exposure * color), 1.0);
 	

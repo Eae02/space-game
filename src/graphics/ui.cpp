@@ -1,160 +1,193 @@
 #include "ui.hpp"
 #include "texture.hpp"
 #include "shader.hpp"
+#include "renderer.hpp"
 #include "../utils.hpp"
 
 #include <fstream>
+#include <bitset>
 #include <GL/glew.h>
 
-static Shader uiShader;
-
-static GLuint spriteVertexBuffer;
-static GLuint spriteVertexArray;
-
-static float pixelSizeX;
-static float pixelSizeY;
-
-struct SpriteInstance {
-	glm::vec4 srcRect;
-	glm::vec4 dstRect;
-	uint32_t color;
-};
-
-void initializeUI() {
-	uiShader.attachStage(GL_VERTEX_SHADER, "ui.vs.glsl");
-	uiShader.attachStage(GL_FRAGMENT_SHADER, "ui.fs.glsl");
-	uiShader.link("ui");
+namespace ui {
+	constexpr uint32_t MAX_SPRITES_PER_FRAME = 1024;
 	
-	const uint8_t spriteVertices[] = { 0, 0, 0, 1, 1, 0, 1, 1 };
-	glCreateBuffers(1, &spriteVertexBuffer);
-	glNamedBufferStorage(spriteVertexBuffer, sizeof(spriteVertices), spriteVertices, 0);
+	static Shader shader;
 	
-	glCreateVertexArrays(1, &spriteVertexArray);
-	for (int i = 0; i < 4; i++) {
-		glEnableVertexArrayAttrib(spriteVertexArray, i);
-		glVertexArrayAttribBinding(spriteVertexArray, i, i ? 1 : 0);
-	}
-	glVertexArrayAttribFormat(spriteVertexArray, 0, 2, GL_UNSIGNED_BYTE, false, 0);
-	glVertexArrayAttribFormat(spriteVertexArray, 1, 4, GL_FLOAT, false, offsetof(SpriteInstance, srcRect));
-	glVertexArrayAttribFormat(spriteVertexArray, 2, 4, GL_FLOAT, false, offsetof(SpriteInstance, dstRect));
-	glVertexArrayAttribFormat(spriteVertexArray, 3, 4, GL_UNSIGNED_BYTE, true, offsetof(SpriteInstance, color));
-	glVertexArrayBindingDivisor(spriteVertexArray, 1, 1);
-	glVertexArrayVertexBuffer(spriteVertexArray, 0, spriteVertexBuffer, 0, 2);
-}
-
-void beginDrawUI(uint32_t fbWidth, uint32_t fbHeight) {
-	uiShader.use();
-	glBindVertexArray(spriteVertexArray);
-	pixelSizeX = 2.0f / fbWidth;
-	pixelSizeY = 2.0f / fbHeight;
-}
-
-void SpriteBuffer::initialize(uint32_t _maxSprites, const struct Texture& _texture) {
-	glCreateBuffers(1, &buffer);
-	glNamedBufferStorage(buffer, _maxSprites * sizeof(SpriteInstance), nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
-	bufferMemory = (SpriteInstance*)glMapNamedBufferRange(buffer, 0, _maxSprites * sizeof(SpriteInstance),
-		GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-	maxSprites = _maxSprites;
-	numSprites = 0;
-	texture = &_texture;
-}
-
-void SpriteBuffer::beginBuild() {
-	numSprites = 0;
-}
-
-void SpriteBuffer::addSprite(const glm::vec2& pos, const Rect* srcRect, const glm::vec4& color) {
-	Rect dstRect;
-	dstRect.min = pos;
-	dstRect.max = pos + (srcRect ? srcRect->size() : glm::vec2(texture->width, texture->height));
-	addSprite(dstRect, srcRect, color);
-}
-
-void SpriteBuffer::addSprite(const Rect& dstRect, const Rect* srcRect, const glm::vec4& color) {
-	if (numSprites >= maxSprites) {
-		return;
-	}
+	static GLuint spriteVertexBuffer;
+	static GLuint spriteVertexArray;
 	
-	glm::vec2 texelSize(1.0f / texture->width, 1.0f / texture->height);
+	struct SpriteInstance {
+		glm::vec4 srcRect;
+		glm::vec4 dstRect;
+		uint32_t color;
+	};
 	
-	bufferMemory[numSprites].dstRect = { dstRect.min * texelSize, dstRect.max * texelSize };
+	static GLuint spriteInstanceBuffer;
+	static SpriteInstance* spriteInstanceMemory;
 	
-	if (srcRect) {
-		bufferMemory[numSprites].srcRect = { srcRect->min, srcRect->max };
-	} else {
-		bufferMemory[numSprites].dstRect = { glm::vec2(0), glm::vec2(1) };
-	}
+	static Texture texture;
 	
-	bufferMemory[numSprites].color = packVectorU(color);
+	struct FontChar {
+		int textureX;
+		int textureY;
+		int width;
+		int height;
+		int xOffset;
+		int yOffset;
+		int xAdvance;
+	};
+	static std::array<FontChar, 128> fontChars;
+	static constexpr uint32_t DEFAULT_CHAR = '*';
 	
-	numSprites++;
-}
-
-void SpriteBuffer::endBuild() {
-	glFlushMappedNamedBufferRange(buffer, 0, sizeof(SpriteInstance) * numSprites);
-}
-
-void SpriteBuffer::draw() const {
-	if (numSprites != 0) {
-		texture->bind(0);
-		glBindVertexBuffer(1, buffer, 0, sizeof(SpriteInstance));
-		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 6, numSprites);
-	}
-}
-
-void Font::loadFnt(const std::string& fntPath, const std::string& imgPath) {
-	std::ifstream stream(fntPath);
-	if (stream) {
-		std::cerr << "error opening font file '" << fntPath << "'" << std::endl;
-		std::abort();
-	}
-	
-	std::string line;
-	while (std::getline(stream, line)) {
-		if (!line.starts_with("char"))
-			continue;
+	static inline void loadFontFile(const std::string& path) {
+		std::ifstream stream(path);
+		if (!stream) {
+			std::cerr << "error opening font file '" << path << "'" << std::endl;
+			std::abort();
+		}
 		
-		auto getParam = [&] (std::string_view nameWithEq) -> int {
-			size_t pos = line.find(nameWithEq);
-			assert(pos != std::string::npos);
-			return atoi(&line[pos + nameWithEq.size()]);
-		};
+		std::bitset<fontChars.size()> seen;
 		
-		const int id = getParam("id=");
-		chars[id].textureX = getParam("x=");
-		chars[id].textureY = getParam("y=");
-		chars[id].width = getParam("width=");
-		chars[id].height = getParam("height=");
-		chars[id].xOffset = getParam("xoffset=");
-		chars[id].yOffset = getParam("yoffset=");
-		chars[id].xAdvance = getParam("xadvance=");
+		std::string line;
+		while (std::getline(stream, line)) {
+			if (!line.starts_with("char "))
+				continue;
+			auto getParam = [&] (std::string_view nameWithEq) -> int {
+				size_t pos = line.find(nameWithEq);
+				assert(pos != std::string::npos);
+				return atoi(&line[pos + nameWithEq.size()]);
+			};
+			const size_t idx = (size_t)getParam("id=");
+			fontChars.at(idx).textureX = getParam("x=");
+			fontChars.at(idx).textureY = getParam("y=");
+			fontChars.at(idx).width    = getParam("width=");
+			fontChars.at(idx).height   = getParam("height=");
+			fontChars.at(idx).xOffset  = getParam("xoffset=");
+			fontChars.at(idx).yOffset  = getParam("yoffset=");
+			fontChars.at(idx).xAdvance = getParam("xadvance=");
+			seen.set(idx);
+		}
+		
+		for (size_t i = 0; i < fontChars.size(); i++) {
+			if (!seen[i]) {
+				fontChars[i] = fontChars[DEFAULT_CHAR];
+			}
+		}
 	}
-}
-
-int Font::stringWidth(std::string_view string) const {
-	int w = 0;
-	for (char c : string) {
-		w += chars[(size_t)c].xAdvance;
+	
+	void initialize() {
+		shader.attachStage(GL_VERTEX_SHADER, "ui.vs.glsl");
+		shader.attachStage(GL_FRAGMENT_SHADER, "ui.fs.glsl");
+		shader.link("ui");
+		
+		const uint8_t spriteVertices[] = { 0, 0, 0, 1, 1, 0, 1, 1 };
+		glCreateBuffers(1, &spriteVertexBuffer);
+		glNamedBufferStorage(spriteVertexBuffer, sizeof(spriteVertices), spriteVertices, 0);
+		
+		constexpr uint32_t INSTANCE_BUFFER_BYTES = MAX_SPRITES_PER_FRAME * sizeof(SpriteInstance) * renderer::frameCycleLen;
+		
+		glCreateBuffers(1, &spriteInstanceBuffer);
+		glNamedBufferStorage(
+			spriteInstanceBuffer,
+			INSTANCE_BUFFER_BYTES,
+			nullptr,
+			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT
+		);
+		spriteInstanceMemory = (SpriteInstance*)glMapNamedBufferRange(
+			spriteInstanceBuffer,
+			0,
+			INSTANCE_BUFFER_BYTES,
+			GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_UNSYNCHRONIZED_BIT
+		);
+		
+		glCreateVertexArrays(1, &spriteVertexArray);
+		for (int i = 0; i < 4; i++) {
+			glEnableVertexArrayAttrib(spriteVertexArray, i);
+			glVertexArrayAttribBinding(spriteVertexArray, i, i ? 1 : 0);
+		}
+		glVertexArrayAttribFormat(spriteVertexArray, 0, 2, GL_UNSIGNED_BYTE, false, 0);
+		glVertexArrayAttribFormat(spriteVertexArray, 1, 4, GL_FLOAT, false, offsetof(SpriteInstance, srcRect));
+		glVertexArrayAttribFormat(spriteVertexArray, 2, 4, GL_FLOAT, false, offsetof(SpriteInstance, dstRect));
+		glVertexArrayAttribFormat(spriteVertexArray, 3, 4, GL_UNSIGNED_BYTE, true, offsetof(SpriteInstance, color));
+		glVertexArrayBindingDivisor(spriteVertexArray, 1, 1);
+		glVertexArrayVertexBuffer(spriteVertexArray, 0, spriteVertexBuffer, 0, 2);
+		glVertexArrayVertexBuffer(spriteVertexArray, 1, spriteInstanceBuffer, 0, sizeof(SpriteInstance));
+		
+		texture.load(exeDirPath + "res/textures/ui.png", true, true);
+		glProgramUniform2f(shader.program, 0, 1.0f / texture.width, 1.0f / texture.height);
+		
+		loadFontFile(exeDirPath + "res/font.fnt");
 	}
-	return w;
-}
-
-void Font::drawString(std::string_view string, const glm::vec2& pos, const glm::vec4& color, SpriteBuffer& buffer) const {
-	float xOffset = pos.x;
-	for (char c : string) {
-		size_t idx = (size_t)c;
+	
+	static uint32_t firstSprite;
+	static uint32_t numSprites;
+	
+	static glm::vec2 pixelSize;
+	
+	void begin(uint32_t fbWidth, uint32_t fbHeight) {
+		firstSprite = renderer::frameCycleIndex * MAX_SPRITES_PER_FRAME;
+		pixelSize = glm::vec2(1.0f / fbWidth, 1.0f / fbHeight);
+		numSprites = 0;
+	}
+	
+	void end() {
+		glFlushMappedNamedBufferRange(
+			spriteInstanceBuffer,
+			firstSprite * sizeof(SpriteInstance),
+			numSprites * sizeof(SpriteInstance)
+		);
+		glEnable(GL_BLEND);
+		glDisable(GL_CULL_FACE);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		shader.use();
+		texture.bind(0);
+		glBindVertexArray(spriteVertexArray);
+		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, numSprites, firstSprite);
+		glDisable(GL_BLEND);
+		glEnable(GL_CULL_FACE);
+	}
+	
+	void drawSprite(const glm::vec2& pos, const Rect& srcRect, const glm::vec4& color) {
+		assert(numSprites < MAX_SPRITES_PER_FRAME);
 		
-		Rect dstRect;
-		dstRect.min.x = xOffset + chars[idx].xOffset;
-		dstRect.min.y = pos.y - (0 - chars[idx].yOffset + chars[idx].height);
-		dstRect.max = dstRect.min + glm::vec2(chars[idx].width, chars[idx].height);
+		SpriteInstance& instanceRef = spriteInstanceMemory[firstSprite + numSprites];
+		instanceRef.dstRect = { pos * pixelSize, (pos + srcRect.size) * pixelSize };
+		instanceRef.srcRect.x = srcRect.min.x;
+		instanceRef.srcRect.y = srcRect.min.y + srcRect.size.y;
+		instanceRef.srcRect.z = srcRect.min.x + srcRect.size.x;
+		instanceRef.srcRect.w = srcRect.min.y;
+		instanceRef.color = packVectorU(color);
 		
-		Rect srcRect;
-		srcRect.min = { chars[idx].textureX, chars[idx].textureY };
-		srcRect.max = srcRect.min + glm::vec2(chars[idx].width, chars[idx].height);
-		
-		buffer.addSprite(dstRect, &srcRect, color);
-		
-		xOffset += chars[idx].xAdvance;
+		numSprites++;
+	}
+	
+	static constexpr int CHAR_PADDING = 2;
+	
+	void drawText(std::string_view string, const glm::vec2& pos, const glm::vec4& color) {
+		float xOffset = 0;
+		for (char c : string) {
+			size_t idx = (size_t)c;
+			if (idx >= fontChars.size())
+				idx = DEFAULT_CHAR;
+			
+			float drawX = pos.x + (xOffset + fontChars[idx].xOffset);
+			float drawY = pos.y + FONT_SIZE - fontChars[idx].yOffset - fontChars[idx].height;
+			
+			Rect srcRect;
+			srcRect.min = { fontChars[idx].textureX, fontChars[idx].textureY };
+			srcRect.size = { fontChars[idx].width, fontChars[idx].height };
+			
+			drawSprite({ drawX, drawY }, srcRect, color);
+			
+			xOffset += fontChars[idx].xAdvance - CHAR_PADDING * 2;
+		}
+	}
+	
+	int textWidth(std::string_view text) {
+		int w = 0;
+		for (char c : text) {
+			w += fontChars.at((size_t)c).xAdvance - CHAR_PADDING * 2;
+		}
+		return w;
 	}
 }

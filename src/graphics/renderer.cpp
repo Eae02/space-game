@@ -11,8 +11,11 @@ namespace renderer {
 	uint32_t frameCycleIndex = 0;
 	int uboAlignment = 0;
 	
-	static Texture mainPassColorAttachment;
-	static Texture mainPassDepthAttachment;
+	Texture mainPassColorAttachment;
+	Texture mainPassDepthAttachment;
+	
+	Texture targetsPassColorAttachment;
+	Texture targetsPassDepthAttachment;
 	
 	static constexpr uint32_t BLOOM_STEPS = 4;
 	static Texture bloomDownscaleAttachments[BLOOM_STEPS];
@@ -22,7 +25,8 @@ namespace renderer {
 	static uint32_t fbHeight = 0;
 	
 	static bool framebuffersInitialized = false;
-	static GLuint mainPassFbo;
+	GLuint mainPassFbo;
+	GLuint targetsPassFbo;
 	static GLuint bloomDownscaleFbos[BLOOM_STEPS];
 	static GLuint bloomBlurFbos[BLOOM_STEPS];
 	
@@ -39,6 +43,8 @@ namespace renderer {
 	void initialize() {
 		mainPassColorAttachment.format = GL_RGBA16F;
 		mainPassDepthAttachment.format = GL_DEPTH_COMPONENT32F;
+		targetsPassColorAttachment.format = GL_RGBA16F;
+		targetsPassDepthAttachment.format = GL_DEPTH_COMPONENT32F;
 		for (uint32_t i = 0; i < BLOOM_STEPS; i++) {
 			bloomDownscaleAttachments[i].format = GL_RGBA16F;
 			bloomBlurAttachments[i].format = GL_RGBA16F;
@@ -74,6 +80,7 @@ namespace renderer {
 		
 		if (framebuffersInitialized) {
 			glDeleteFramebuffers(1, &mainPassFbo);
+			glDeleteFramebuffers(1, &targetsPassFbo);
 			if (settings::bloom) {
 				glDeleteFramebuffers(BLOOM_STEPS, bloomDownscaleFbos);
 				glDeleteFramebuffers(BLOOM_STEPS, bloomBlurFbos);
@@ -93,6 +100,16 @@ namespace renderer {
 		mainPassDepthAttachment.height = height;
 		mainPassDepthAttachment.initialize();
 		mainPassDepthAttachment.setParamsForFramebuffer();
+		
+		targetsPassColorAttachment.width = width;
+		targetsPassColorAttachment.height = height;
+		targetsPassColorAttachment.initialize();
+		targetsPassColorAttachment.setParamsForFramebuffer();
+		
+		targetsPassDepthAttachment.width = width;
+		targetsPassDepthAttachment.height = height;
+		targetsPassDepthAttachment.initialize();
+		targetsPassDepthAttachment.setParamsForFramebuffer();
 		
 		if (settings::bloom) {
 			glCreateFramebuffers(BLOOM_STEPS, bloomDownscaleFbos);
@@ -120,6 +137,10 @@ namespace renderer {
 		glCreateFramebuffers(1, &mainPassFbo);
 		glNamedFramebufferTexture(mainPassFbo, GL_COLOR_ATTACHMENT0, mainPassColorAttachment.texture, 0);
 		glNamedFramebufferTexture(mainPassFbo, GL_DEPTH_ATTACHMENT, mainPassDepthAttachment.texture, 0);
+		
+		glCreateFramebuffers(1, &targetsPassFbo);
+		glNamedFramebufferTexture(targetsPassFbo, GL_COLOR_ATTACHMENT0, targetsPassColorAttachment.texture, 0);
+		glNamedFramebufferTexture(targetsPassFbo, GL_DEPTH_ATTACHMENT, targetsPassDepthAttachment.texture, 0);
 	}
 	
 	void updateRenderSettings(const RenderSettings& renderSettings) {
@@ -154,11 +175,13 @@ namespace renderer {
 		glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &attachment);
 	}
 	
-	void endMainPass(const glm::mat4& prevViewProj, float dt) {
+	void drawSkybox() {
 		skyboxShader.use();
 		glBindTextureUnit(0, res::skybox);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
-		
+	}
+	
+	void endMainPass(const glm::mat4& prevViewProj, float dt) {
 		glDisable(GL_DEPTH_TEST);
 		
 		if (settings::bloom) {

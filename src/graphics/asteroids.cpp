@@ -2,6 +2,7 @@
 #include "model.hpp"
 #include "shader.hpp"
 #include "shadows.hpp"
+#include "sphere.hpp"
 #include "../settings.hpp"
 #include "../resources.hpp"
 #include "../utils.hpp"
@@ -12,54 +13,7 @@
 #include <unordered_map>
 #include <noise/noise.h>
 
-static std::vector<glm::vec3> sphereVertices[ASTEROID_NUM_LOD_LEVELS];
-static std::vector<glm::uvec3> sphereTriangles[ASTEROID_NUM_LOD_LEVELS];
-
-static const glm::vec3 baseSphereVertices[] = {
-	glm::vec3(0.000000, -1.000000, 0.000000),
-	glm::vec3(0.723600, -0.447215, 0.525720),
-	glm::vec3(-0.276385, -0.447215, 0.850640),
-	glm::vec3(-0.894425, -0.447215, 0.000000),
-	glm::vec3(-0.276385, -0.447215, -0.850640),
-	glm::vec3(0.723600, -0.447215, -0.525720),
-	glm::vec3(0.276385, 0.447215, 0.850640),
-	glm::vec3(-0.723600, 0.447215, 0.525720),
-	glm::vec3(-0.723600, 0.447215, -0.525720),
-	glm::vec3(0.276385, 0.447215, -0.850640),
-	glm::vec3(0.894425, 0.447215, 0.000000),
-	glm::vec3(0.000000, 1.000000, 0.000000)
-};
-
-static const uint32_t baseSphereIndices[] = {
-	0, 1, 2, 1, 0, 5, 0, 2, 3, 0, 3, 4, 0, 4, 5, 1, 5, 10, 2, 1, 6, 3, 2, 7, 4, 3, 8, 5, 4, 9, 1, 10, 6, 2, 6, 7, 3, 7, 8, 4, 8, 9, 5, 9, 10, 6, 10, 11, 7, 6, 11, 8, 7, 11, 9, 8, 11, 10, 9, 11
-};
-
-static void generateNextSphereLod(uint32_t lod) {
-	sphereVertices[lod] = sphereVertices[lod - 1];
-	std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, PairIntIntHash> midVertices;
-	
-	auto getMiddleVertex = [&] (uint32_t v1, uint32_t v2) {
-		std::pair<uint32_t, uint32_t> key(std::min(v1, v2), std::max(v1, v2));
-		auto mvIt = midVertices.find(key);
-		if (mvIt != midVertices.end())
-			return mvIt->second;
-		
-		const uint32_t vertexId = sphereVertices[lod].size();
-		midVertices.emplace(key, vertexId);
-		sphereVertices[lod].push_back(glm::normalize(sphereVertices[lod - 1][v1] + sphereVertices[lod - 1][v2]));
-		return vertexId;
-	};
-	
-	for (const glm::uvec3& triangle : sphereTriangles[lod - 1]) {
-		uint32_t m1 = getMiddleVertex(triangle.x, triangle.y);
-		uint32_t m2 = getMiddleVertex(triangle.y, triangle.z);
-		uint32_t m3 = getMiddleVertex(triangle.z, triangle.x);
-		sphereTriangles[lod].push_back({ triangle.x, m1, m3 });
-		sphereTriangles[lod].push_back({ m1, triangle.y, m2 });
-		sphereTriangles[lod].push_back({ m3, m2, triangle.z });
-		sphereTriangles[lod].push_back({ m1, m2, m3 });
-	}
-}
+static_assert(NUM_SPHERE_LODS >= ASTEROID_NUM_LOD_LEVELS);
 
 struct AsteroidVertex {
 	glm::vec3 pos;
@@ -167,8 +121,8 @@ struct {
 	GLuint frustumPlanesShadow;
 } uniformLocs;
 
-static uint32_t numAsteroids = 0;
-static float asteroidBoxSize;
+uint32_t numAsteroids = 0;
+float asteroidBoxSize;
 
 static void loadAsteroidShaders() {
 	asteroidShader.attachStage(GL_VERTEX_SHADER, "asteroid.vs.glsl");
@@ -205,17 +159,9 @@ static void loadAsteroidShaders() {
 	uniformLocs.frustumPlanesShadow = asteroidComputeShader.findUniform("frustumPlanesShadow");
 }
 
-std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed, float asteroidBoxSize);
+std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed);
 
 void initializeAsteroids() {
-	sphereVertices[0] = std::vector<glm::vec3>(std::begin(baseSphereVertices), std::end(baseSphereVertices));
-	for (size_t i = 0; i < std::size(baseSphereIndices); i += 3) {
-		sphereTriangles[0].emplace_back(baseSphereIndices[i], baseSphereIndices[i + 1], baseSphereIndices[i + 2]);
-	}
-	for (uint32_t i = 1; i < ASTEROID_NUM_LOD_LEVELS; i++) {
-		generateNextSphereLod(i);
-	}
-	
 	lodLevelVertexOffset[0] = 0;
 	
 	std::vector<uint16_t> asteroidIndices;
@@ -275,11 +221,11 @@ void initializeAsteroids() {
 #endif
 	
 	asteroidBoxSize = settings::worldSize * 1000;
-	std::vector<std::pair<glm::vec3, uint32_t>> generatedAsteroids = generateAsteroids(rng(), asteroidBoxSize);
+	std::vector<std::pair<glm::vec3, uint32_t>> generatedAsteroids = generateAsteroids(rng());
 	std::vector<AsteroidSettings> asteroidSettings(generatedAsteroids.size());
 	for (size_t i = 0; i < generatedAsteroids.size(); i++) {
 		auto [pos, variant] = generatedAsteroids[i];
-		AsteroidSettings& st = asteroidSettings.emplace_back();
+		AsteroidSettings& st = asteroidSettings[i];
 		st.firstVertex = asteroidVariants[variant].firstLodFirstVertex;
 		st.scale = asteroidVariants[variant].size;
 		st.initialRotation = std::uniform_real_distribution<float>(0, (float)M_PI * 2)(rng);
