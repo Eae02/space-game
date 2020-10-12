@@ -5,6 +5,7 @@
 #include "ship.hpp"
 #include "settings.hpp"
 #include "utils.hpp"
+#include "graphics/ui.hpp"
 #include "graphics/particles.hpp"
 #include "graphics/shadows.hpp"
 #include "graphics/asteroids.hpp"
@@ -86,6 +87,7 @@ int main() {
 #endif
 	
 	initializeShadowMapping();
+	initializeUI();
 	Model::initializeVao();
 	res::load();
 	

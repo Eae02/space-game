@@ -78,7 +78,7 @@ static inline void calculateNormals(std::span<AsteroidVertex> vertices, std::spa
 	}
 	for (size_t i = 0; i < vertices.size(); i++) {
 		if (glm::length2(normals[i]) > 1E-6f) {
-			vertices[i].normal = packVec3(glm::normalize(normals[i]));
+			vertices[i].normal = packVectorS(glm::normalize(normals[i]));
 		}
 	}
 	std::free(normals);

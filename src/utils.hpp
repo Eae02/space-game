@@ -14,10 +14,20 @@ constexpr inline auto roundToNextMul(T value, U multiple) {
 	return valModMul == 0 ? value : (value + multiple - valModMul);
 }
 
-inline uint32_t packVec3(const glm::vec3& vec) {
+template<int S>
+inline uint32_t packVectorS(const glm::vec<S, float, glm::defaultp>& vec) {
 	uint32_t ret = 0;
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < S; i++) {
 		reinterpret_cast<int8_t*>(&ret)[i] = (int8_t)glm::clamp((int)(vec[i] * 127), -127, 127);
+	}
+	return ret;
+}
+
+template<int S>
+inline uint32_t packVectorU(const glm::vec<S, float, glm::defaultp>& vec) {
+	uint32_t ret = 0;
+	for (int i = 0; i < S; i++) {
+		reinterpret_cast<uint8_t*>(&ret)[i] = (uint8_t)glm::clamp((int)(vec[i] * 256), 0, 255);
 	}
 	return ret;
 }

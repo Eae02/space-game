@@ -65,7 +65,7 @@ void generateTangents(std::span<Vertex> vertices, std::span<const glm::vec3> nor
 				tangents1[v] = -tangents1[v];
 			}
 		}
-		vertices[v].tangent = packVec3(tangents1[v]);
+		vertices[v].tangent = packVectorS(tangents1[v]);
 	}
 	
 	std::free(tangents1);
@@ -118,7 +118,7 @@ void Model::loadObj(const std::string& path) {
 			vertex.pos.x = shape.mesh.positions[i * 3 + 0];
 			vertex.pos.y = shape.mesh.positions[i * 3 + 1];
 			vertex.pos.z = shape.mesh.positions[i * 3 + 2];
-			vertex.normal = packVec3(normal);
+			vertex.normal = packVectorS(normal);
 			vertex.texcoord.x = shape.mesh.texcoords[i * 2 + 0];
 			vertex.texcoord.y = shape.mesh.texcoords[i * 2 + 1];
 			
