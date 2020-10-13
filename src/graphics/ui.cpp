@@ -136,6 +136,7 @@ namespace ui {
 			firstSprite * sizeof(SpriteInstance),
 			numSprites * sizeof(SpriteInstance)
 		);
+		glEnable(GL_FRAMEBUFFER_SRGB);
 		glEnable(GL_BLEND);
 		glDisable(GL_CULL_FACE);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -145,6 +146,7 @@ namespace ui {
 		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, numSprites, firstSprite);
 		glDisable(GL_BLEND);
 		glEnable(GL_CULL_FACE);
+		glDisable(GL_FRAMEBUFFER_SRGB);
 	}
 	
 	void drawSprite(const glm::vec2& pos, const Rect& srcRect, const glm::vec4& color) {

@@ -121,14 +121,17 @@ int main() {
 	constexpr float LOW_FOV = 75.0f;
 	constexpr float HIGH_FOV = 110.0f;
 	
-	Target nextTarget;
-	Target optionalTarget;
+	Target targets[3];
+	float remTime = 60;
 	
-	nextTarget.color = glm::convertSRGBToLinear(glm::vec3(0.5f, 0.5f, 1.0f));
-	nextTarget.pos = ship.pos + glm::vec3(0);
+	targets[0].color = glm::convertSRGBToLinear(glm::vec3(0.4f, 0.7f, 1.0f));
+	targets[0].pos = ship.pos + glm::vec3(0);
 	
-	optionalTarget.color = glm::convertSRGBToLinear(glm::vec3(1.0f, 0.5f, 0.5f));
-	optionalTarget.pos =ship.pos + glm::vec3(0, 0, 10000);
+	targets[1].color = glm::convertSRGBToLinear(glm::vec3(1.0f, 1.0f, 0.4f));
+	targets[1].pos = ship.pos + glm::vec3(5000, 5000, 0);
+	
+	targets[2].color = glm::convertSRGBToLinear(glm::vec3(1.0f, 0.4f, 0.4f));
+	targets[2].pos =ship.pos + glm::vec3(0, 0, 40000);
 	
 	uint64_t prevFrameEnd = 0, prevFrameAfterSwap = 0;
 	
@@ -155,7 +158,9 @@ int main() {
 				if (event.key.keysym.scancode == SDL_SCANCODE_F7)
 					drawAsteroidsWireframe = !drawAsteroidsWireframe;
 				if (event.key.keysym.scancode == SDL_SCANCODE_C)
-					ship.stopped = !ship.stopped;
+					ship.stopped = true;
+				if (event.key.keysym.scancode == SDL_SCANCODE_X)
+					shouldHideTargetInfo = !shouldHideTargetInfo;
 				if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
 					shouldClose = true;
 			}
@@ -168,6 +173,8 @@ int main() {
 		
 		ship.update(dt, curInput, prevInput);
 		glm::vec3 boxPositionOffset = glm::vec3(ship.boxIndex) * asteroidBoxSize;
+		
+		remTime -= dt;
 		
 		uint64_t fenceWaitTime = 0;
 		if (fences[renderer::frameCycleIndex] != nullptr) {
@@ -214,12 +221,11 @@ int main() {
 		drawAsteroids(drawAsteroidsWireframe);
 		renderer::drawSkybox();
 		
-		nextTarget.truePos = nextTarget.pos - boxPositionOffset;
-		optionalTarget.truePos = optionalTarget.pos - boxPositionOffset;
-		
-		beginDrawTargets(currentTime);
-		drawTarget(nextTarget);
-		drawTarget(optionalTarget);
+		beginDrawTargets(currentTime, dt);
+		for (Target& target : targets) {
+			target.truePos = target.pos - boxPositionOffset;
+			drawTarget(target);
+		}
 		endDrawTargets();
 		
 		drawParticles(currentTime, renderSettings.cameraPos);
@@ -227,6 +233,10 @@ int main() {
 		renderer::endMainPass(prevViewProj, dt);
 		
 		ui::begin(drawableWidth, drawableHeight);
+		
+		for (Target& target : targets) {
+			drawTargetUI(target, renderSettings.vpMatrix, glm::vec2(drawableWidth, drawableHeight), ship, remTime);
+		}
 		
 #ifdef DEBUG
 		uint64_t elapsedTicks = SDL_GetPerformanceCounter() - prevFrameEnd;

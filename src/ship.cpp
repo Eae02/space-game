@@ -31,10 +31,10 @@ static inline float calculateAcceleration(float dt, float move, float& vel, floa
 	return move;
 }
 
-constexpr float MIN_SPEED = 100;
+constexpr float MIN_SPEED = 70;
 constexpr float MAX_SPEED = 750;
-constexpr float FWD_ACCEL_TIME = 8;
-constexpr float FWD_DEACCEL_TIME = 2;
+constexpr float FWD_ACCEL_TIME = 7;
+constexpr float FWD_DEACCEL_TIME = 1.5f;
 
 constexpr float MOUSE_MOVE_SENSITIVITY = 0.02f;
 constexpr float MAX_MOUSE_ACCEL = 50.0f;
