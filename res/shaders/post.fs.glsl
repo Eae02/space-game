@@ -36,7 +36,7 @@ float calcGodRays() {
 	for (uint i = uint(ceil(lightBeginSample)); i < grSampleCount; i++) {
 		vec2 sampleCoord = mix(screenCoord_v, sunScreenPosition, float(i) / float(grSampleCount));
 		float depth = texture(depthSampler, sampleCoord).r;
-		if (depth > 1.0 - 1E-6) {
+		if (depth > 0.99995) {
 			light += illuminationDecay;
 		}
 		illuminationDecay *= grLightDecay;
