@@ -54,6 +54,9 @@ vec3 worldPosFromDepth(float depthH) {
 const float FOG_START = 200;
 #include fog.glh
 
+layout(location=0) uniform vec3 vignetteColor;
+layout(location=1) uniform vec3 colorScale;
+
 void main() {
 	float depthH = texture(depthSampler, screenCoord_v).r;
 	vec3 worldPos = worldPosFromDepth(depthH);
@@ -69,5 +72,5 @@ void main() {
 	color_out = vec4(vec3(1.0) - exp(-exposure * color), 1.0);
 	
 	float vignette = pow(length(screenCoord_v - 0.5) / length(vec2(0.55)), 2.0);
-	color_out *= 1.0 - vignette;
+	color_out.rgb = mix(color_out.rgb, vignetteColor, vignette) * colorScale;
 }

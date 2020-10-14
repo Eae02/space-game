@@ -1,4 +1,4 @@
-layout(location=1) uniform vec3 edgeColor;
+layout(location=1) uniform vec4 edgeColor;
 
 layout(location=0) out vec4 color_out;
 
@@ -49,8 +49,8 @@ void main() {
 	
 	float intensity = pow(clamp(1 - d * 0.8 + ns.x * 0.4, 0, 1), 5);
 	
-	vec3 color = edgeColor * 3 * (0.25 + intensity);
-	float alpha = mix(0.1, 1.0, clamp(intensity, 0, 1));
+	vec3 color = edgeColor.rgb * 3 * (0.25 + intensity);
+	float alpha = mix(0.1, 1.0, clamp(intensity, 0, 1)) * edgeColor.a;
 	
 	color_out = vec4(mix(fog(mpColor, distance(worldPos_v, mpWorldPos)), color, alpha), 1);
 }

@@ -1,5 +1,8 @@
 #include "utils.hpp"
 
+float dt = 0;
+float gameTime = 0;
+
 glm::ivec3 maxComputeWorkGroupSize;
 int maxComputeWorkGroupInvocations;
 

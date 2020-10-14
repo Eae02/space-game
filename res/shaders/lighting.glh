@@ -59,14 +59,21 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, vec4 diffuseAndAo, float spec
 	
 	vec3 litColor = irradiance * 0.15 * diffuseAndAo.a * diffuseAndAo.rgb;
 	
+	vec3 dirToEye = normalize(rs.cameraPos - worldPos);
+	
 	float sf = calcShadow(worldPos);
 	if (sf > 0) {
 		float diffuseFactor = max(dot(normal, -rs.sunDir), 0.0) * sf;
-		vec3 dirToEye = normalize(rs.cameraPos - worldPos);
 		vec3 hDir = normalize(dirToEye - rs.sunDir);
 		float specFactor = pow(max(dot(normal, hDir), 0.0), specExponent);
 		litColor += rs.sunColor * diffuseFactor * (diffuseAndAo.rgb + specIntensity * specFactor);
 	}
+	
+	vec3 toPl = normalize(rs.plPosition - worldPos);
+	float diffuseFactor = max(dot(normal, toPl), 0.0) / (distance(rs.plPosition, worldPos) * 0.05 + 1);
+	vec3 hDir = normalize(dirToEye + toPl);
+	float specFactor = pow(max(dot(normal, hDir), 0.0), specExponent);
+	litColor += rs.plColor * diffuseFactor * (diffuseAndAo.rgb + specIntensity * specFactor);
 	
 	return litColor;
 }

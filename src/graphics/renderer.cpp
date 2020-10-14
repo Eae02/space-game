@@ -7,6 +7,9 @@
 
 #include <random>
 
+const glm::vec3 SUN_DIR = glm::normalize(glm::vec3(0.5f, -1, -0.8f));
+const glm::vec3 SUN_COLOR = { 1, 0.9f, 0.95f };
+
 namespace renderer {
 	uint32_t frameCycleIndex = 0;
 	int uboAlignment = 0;
@@ -181,7 +184,7 @@ namespace renderer {
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 	
-	void endMainPass(const glm::mat4& prevViewProj, float dt) {
+	void endMainPass(const glm::vec3& vignetteColor, const glm::vec3& colorScale) {
 		glDisable(GL_DEPTH_TEST);
 		
 		if (settings::bloom) {
@@ -234,6 +237,8 @@ namespace renderer {
 		postShader.use();
 		mainPassColorAttachment.bind(0);
 		mainPassDepthAttachment.bind(1);
+		glUniform3fv(0, 1, (const float*)&vignetteColor);
+		glUniform3fv(1, 1, (const float*)&colorScale);
 		
 		glEnable(GL_FRAMEBUFFER_SRGB);
 		glDrawArrays(GL_TRIANGLES, 0, 3);

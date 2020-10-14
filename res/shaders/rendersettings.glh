@@ -8,4 +8,6 @@ layout(binding=0, std140) uniform RenderSettings {
 	float gameTime;
 	vec3 sunColor;
 	vec3 sunDir;
+	vec3 plPosition;
+	vec3 plColor;
 } rs;

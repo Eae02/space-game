@@ -49,7 +49,6 @@ namespace settings {
 		getBool("vsync", vsync);
 		getBool("mouseInput", mouseInput);
 		getUInt("shadowRes", shadowRes, 128);
-		getUInt("worldSize", worldSize, 1);
 		worldSize = glm::clamp(worldSize, 1U, 5U);
 		getUInt("lodDist", lodDist, 100);
 	}

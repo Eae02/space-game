@@ -5,6 +5,9 @@
 constexpr float Z_NEAR = 0.1f;
 constexpr float Z_FAR = 5000.0f;
 
+extern float dt;
+extern float gameTime;
+
 extern glm::ivec3 maxComputeWorkGroupSize;
 extern int maxComputeWorkGroupInvocations;
 

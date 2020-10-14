@@ -16,7 +16,7 @@ void InputState::keyStateChanged(int scancode, bool newState) {
 		rollRightKey = newState;
 	} else if (scancode == SDL_SCANCODE_SPACE) {
 		moreSpeedKey = newState;
-	} else if (scancode == SDL_SCANCODE_LCTRL) {
+	} else if (scancode == SDL_SCANCODE_LALT || scancode == SDL_SCANCODE_RALT) {
 		lessSpeedKey = newState;
 	}
 }

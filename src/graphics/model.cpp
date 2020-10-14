@@ -26,6 +26,14 @@ void Model::initialize(std::span<Vertex> vertices, std::span<uint32_t> indices) 
 	
 	glCreateBuffers(1, &indexBuffer);
 	glNamedBufferStorage(indexBuffer, indices.size_bytes(), indices.data(), 0);
+	
+	sphereRadius = 0;
+	minPos = maxPos = vertices[0].pos;
+	for (const Vertex& vertex : vertices) {
+		sphereRadius = std::max(glm::length(vertex.pos), sphereRadius);
+		minPos = glm::min(minPos, vertex.pos);
+		maxPos = glm::max(maxPos, vertex.pos);
+	}
 }
 
 void Model::destroy() {

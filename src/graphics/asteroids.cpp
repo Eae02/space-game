@@ -38,6 +38,9 @@ static inline void calculateNormals(std::span<AsteroidVertex> vertices, std::spa
 	std::free(normals);
 }
 
+constexpr uint32_t COLLISION_LOD = 4;
+static_assert(COLLISION_LOD < ASTEROID_NUM_LOD_LEVELS);
+
 AsteroidVariant generateSingleAsteroidVariant(std::mt19937& rng, std::vector<AsteroidVertex>& vertices) {
 	float innerRadius = std::uniform_real_distribution<float>(0.4f, 0.5f)(rng);
 	
@@ -75,7 +78,11 @@ AsteroidVariant generateSingleAsteroidVariant(std::mt19937& rng, std::vector<Ast
 			float noiseValue = (float)mainNoise.GetValue(scaledVertex.x, scaledVertex.y, scaledVertex.z) * 0.5f + 0.5f;
 			float ridgeNoiseValue = (float)ridgeNoise.GetValue(scaledVertex.x, scaledVertex.y, scaledVertex.z) * 0.5f + 0.5f;
 			float radius = glm::mix(innerRadius, 1.0f, noiseValue) * glm::mix(0.8f, 1.0f, ridgeNoiseValue);
-			vertices.push_back(AsteroidVertex { scaledVertex * radius, 0 });
+			glm::vec3 pos = scaledVertex * radius;
+			vertices.push_back(AsteroidVertex { pos, 0 });
+			if (lod == COLLISION_LOD) {
+				variant.collisionVertices.push_back(pos);
+			}
 		}
 		
 		calculateNormals(std::span<AsteroidVertex>(&vertices[firstVertex], vertices.size() - firstVertex), sphereTriangles[lod]);
@@ -122,7 +129,6 @@ struct {
 } uniformLocs;
 
 uint32_t numAsteroids = 0;
-float asteroidBoxSize;
 
 static void loadAsteroidShaders() {
 	asteroidShader.attachStage(GL_VERTEX_SHADER, "asteroid.vs.glsl");
@@ -149,7 +155,7 @@ static void loadAsteroidShaders() {
 	glProgramUniform1f(asteroidComputeShader.program,
 		asteroidComputeShader.findUniform("distancePerLod"), (float)settings::lodDist);
 	glProgramUniform1f(asteroidComputeShader.program,
-		asteroidComputeShader.findUniform("wrappingModulo"), asteroidBoxSize);
+		asteroidComputeShader.findUniform("wrappingModulo"), ASTEROID_BOX_SIZE);
 	glProgramUniform1ui(asteroidComputeShader.program,
 		asteroidComputeShader.findUniform("numAsteroids"), numAsteroids);
 	
@@ -158,6 +164,21 @@ static void loadAsteroidShaders() {
 	uniformLocs.frustumPlanes = asteroidComputeShader.findUniform("frustumPlanes");
 	uniformLocs.frustumPlanesShadow = asteroidComputeShader.findUniform("frustumPlanesShadow");
 }
+
+struct AsteroidInstance {
+	glm::vec3 pos;
+	glm::vec3 rotationAxis;
+	float initialRotation;
+	float rotationSpeed;
+	float radius;
+	uint32_t variant;
+};
+
+std::vector<AsteroidInstance> asteroids;
+
+constexpr float ASTEROIDS_CELL_SIZE = 50;
+constexpr int ASTEROIDS_GRID_SIZE = ASTEROID_BOX_SIZE / ASTEROIDS_CELL_SIZE;
+std::vector<uint32_t> asteroidGrid[ASTEROIDS_GRID_SIZE][ASTEROIDS_GRID_SIZE][ASTEROIDS_GRID_SIZE];
 
 std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed);
 
@@ -220,18 +241,37 @@ void initializeAsteroids() {
 	auto placeGenStartTime = std::chrono::high_resolution_clock::now();
 #endif
 	
-	asteroidBoxSize = settings::worldSize * 1000;
 	std::vector<std::pair<glm::vec3, uint32_t>> generatedAsteroids = generateAsteroids(rng());
 	std::vector<AsteroidSettings> asteroidSettings(generatedAsteroids.size());
+	asteroids.resize(generatedAsteroids.size());
 	for (size_t i = 0; i < generatedAsteroids.size(); i++) {
+		glm::vec3 rotationAxis = randomDirection(rng);
+		
 		auto [pos, variant] = generatedAsteroids[i];
 		AsteroidSettings& st = asteroidSettings[i];
 		st.firstVertex = asteroidVariants[variant].firstLodFirstVertex;
 		st.scale = asteroidVariants[variant].size;
 		st.initialRotation = std::uniform_real_distribution<float>(0, (float)M_PI * 2)(rng);
 		st.rotationSpeed = std::uniform_real_distribution<float>(0.1f, 0.4f)(rng);
-		st.rotationAxis = glm::packSnorm4x8(glm::vec4(randomDirection(rng), 0.0f));
+		st.rotationAxis = glm::packSnorm4x8(glm::vec4(rotationAxis, 0.0f));
 		st.pos = pos;
+		
+		asteroids[i].pos = pos;
+		asteroids[i].radius = asteroidVariants[variant].size;
+		asteroids[i].variant = variant;
+		asteroids[i].initialRotation = st.initialRotation;
+		asteroids[i].rotationSpeed = st.rotationSpeed;
+		asteroids[i].rotationAxis = glm::normalize(glm::unpackSnorm4x8(st.rotationAxis));
+		
+		glm::ivec3 minCell = glm::ivec3(glm::floor((pos - asteroidVariants[variant].size) / ASTEROIDS_CELL_SIZE)) + ASTEROIDS_GRID_SIZE;
+		glm::ivec3 maxCell = glm::ivec3(glm::floor((pos + asteroidVariants[variant].size) / ASTEROIDS_CELL_SIZE)) + ASTEROIDS_GRID_SIZE;
+		for (int cx = minCell.x; cx <= maxCell.x; cx++) {
+			for (int cy = minCell.y; cy <= maxCell.y; cy++) {
+				for (int cz = minCell.z; cz <= maxCell.z; cz++) {
+					asteroidGrid[cx % ASTEROIDS_GRID_SIZE][cy % ASTEROIDS_GRID_SIZE][cz % ASTEROIDS_GRID_SIZE].push_back(i);
+				}
+			}
+		}
 	}
 	
 #ifdef DEBUG
@@ -254,7 +294,22 @@ void initializeAsteroids() {
 	loadAsteroidShaders();
 }
 
-void prepareAsteroids(const glm::vec3& cameraPos, const glm::vec4 frustumPlanes[6], const std::array<glm::vec4, 4>* frustumPlanesShadow) {
+static glm::vec3 asteroidWrappingOffset;
+static glm::vec3 asteroidGlobalOffset;
+
+void clearAsteroidWrapping() {
+	asteroidWrappingOffset = glm::vec3(0);
+	asteroidGlobalOffset = glm::vec3(0);
+}
+
+void updateAsteroidWrapping(const glm::vec3& cameraPos) {
+	glm::vec3 boxOffset = glm::floor(cameraPos / ASTEROID_BOX_SIZE) * ASTEROID_BOX_SIZE;
+	glm::vec3 posInBox = cameraPos - boxOffset;
+	asteroidWrappingOffset = ASTEROID_BOX_SIZE * 1.5f - posInBox;
+	asteroidGlobalOffset = cameraPos - ASTEROID_BOX_SIZE / 2;
+}
+
+void prepareAsteroids(const glm::vec4 frustumPlanes[6], const std::array<glm::vec4, 4>* frustumPlanesShadow) {
 	constexpr uint32_t COMPUTE_SHADER_LOCAL_SIZE_X = 64;
 	
 	asteroidComputeShader.use();
@@ -262,15 +317,10 @@ void prepareAsteroids(const glm::vec3& cameraPos, const glm::vec4 frustumPlanes[
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, asteroidsMatrixBuffer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, asteroidsDrawDataBuffer);
 	
-	glm::vec3 boxOffset = glm::floor(cameraPos / asteroidBoxSize) * asteroidBoxSize;
-	glm::vec3 posInBox = cameraPos - boxOffset;
-	glm::vec3 wrappingOffset = asteroidBoxSize * 1.5f - posInBox;
-	glm::vec3 globalOffset = cameraPos - asteroidBoxSize / 2;
-	
 	static_assert(sizeof(*frustumPlanesShadow) == sizeof(glm::vec4) * 4);
 	
-	glUniform3fv(uniformLocs.wrappingOffset, 1, (float*)&wrappingOffset);
-	glUniform3fv(uniformLocs.globalOffset, 1, (float*)&globalOffset);
+	glUniform3fv(uniformLocs.wrappingOffset, 1, (float*)&asteroidWrappingOffset);
+	glUniform3fv(uniformLocs.globalOffset, 1, (float*)&asteroidGlobalOffset);
 	glUniform4fv(uniformLocs.frustumPlanes, 6, (const float*)frustumPlanes);
 	glUniform4fv(uniformLocs.frustumPlanesShadow, 4 * NUM_SHADOW_CASCADES, (const float*)frustumPlanesShadow);
 	
@@ -313,4 +363,60 @@ void drawAsteroids(bool wireframe) {
 	if (wireframe) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
+}
+
+bool anyAsteroidIntersects(const glm::vec3& position, float sphereRadius) {
+	for (const AsteroidInstance& asteroid : asteroids) {
+		glm::vec3 pos = glm::mod(asteroid.pos + asteroidWrappingOffset, ASTEROID_BOX_SIZE) + asteroidGlobalOffset;
+		float sphereSum = asteroid.radius + sphereRadius;
+		if (glm::distance2(pos, position) < sphereSum * sphereSum) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static inline glm::mat3 getAsteroidRotation(const AsteroidInstance& asteroid) {
+	float rotation = asteroid.initialRotation + asteroid.rotationSpeed * gameTime;
+	float sinr = sin(rotation);
+	float cosr = cos(rotation);
+	glm::vec3 raxis = asteroid.rotationAxis;
+	glm::vec3 rx(cosr + raxis.x * raxis.x * (1 - cosr), raxis.x * raxis.y * (1 - cosr) - raxis.z * sinr, raxis.x * raxis.z * (1 - cosr) + raxis.y * sinr);
+	glm::vec3 ry(raxis.y * raxis.x * (1 - cosr) + raxis.z * sinr, cosr + raxis.y * raxis.y * (1 - cosr), raxis.y * raxis.z * (1 - cosr) - raxis.x * sinr);
+	glm::vec3 rz(raxis.z * raxis.x * (1 - cosr) - raxis.y * sinr, raxis.z * raxis.y * (1 - cosr) + raxis.x * sinr, cosr + raxis.z * raxis.z * (1 - cosr));
+	return glm::mat3(rx, ry, rz);
+}
+
+bool anyAsteroidIntersects(const glm::vec3& rectMin, const glm::vec3& rectMax,
+	const glm::mat4& boxTransform, const glm::mat4& boxTransformInv) {
+	
+	glm::vec3 sphereCenter(boxTransform * glm::vec4(((rectMax + rectMin) / 2.0f), 1));
+	float sphereRadius = glm::distance(sphereCenter, glm::vec3(boxTransform * glm::vec4(rectMax, 1)));
+	
+	auto checkAsteroid = [&] (const AsteroidInstance& asteroid) -> bool {
+		glm::vec3 pos = glm::mod(asteroid.pos + asteroidWrappingOffset, ASTEROID_BOX_SIZE) + asteroidGlobalOffset;
+		
+		float radSum = asteroid.radius + sphereRadius;
+		if (glm::distance2(pos, sphereCenter) > radSum * radSum)
+			return false;
+		
+		glm::mat3 rotationMatrix = getAsteroidRotation(asteroid);
+		
+		glm::mat4 inverseTransform = boxTransformInv * glm::translate(glm::mat4(1), pos) * glm::mat4(rotationMatrix);
+		for (const glm::vec3& vertex : asteroidVariants[asteroid.variant].collisionVertices) {
+			glm::vec4 vertexBoxLocal = inverseTransform * glm::vec4(vertex, 1);
+			if (vertexBoxLocal.x > rectMin.x && vertexBoxLocal.x < rectMax.x &&
+					vertexBoxLocal.y > rectMin.y && vertexBoxLocal.y < rectMax.y &&
+					vertexBoxLocal.z > rectMin.z && vertexBoxLocal.z < rectMax.z) {
+				return true;
+			}
+		}
+		return false;
+	};
+	
+	for (const AsteroidInstance& a : asteroids) {
+		if (checkAsteroid(a))
+			return true;
+	}
+	return false;
 }

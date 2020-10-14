@@ -14,6 +14,8 @@
 #include "graphics/model.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/renderer.hpp"
+#include "game.hpp"
+#include "menu.hpp"
 
 #include <iomanip>
 
@@ -109,37 +111,24 @@ int main() {
 	
 	InputState curInput, prevInput;
 	
-	Ship ship;
-	
-	glm::mat4 prevViewProj;
 	std::array<glm::vec4, 6> frustumPlanes;
 	bool frustumPlanesFrozen = false;
 	bool drawAsteroidsWireframe = false;
 	
-	glm::vec3 sunDir = glm::normalize(glm::vec3(0.5f, -1, -0.8f));
-	
-	constexpr float LOW_FOV = 75.0f;
-	constexpr float HIGH_FOV = 110.0f;
-	
-	Target targets[3];
-	float remTime = 60;
-	
-	targets[0].color = glm::convertSRGBToLinear(glm::vec3(0.4f, 0.7f, 1.0f));
-	targets[0].pos = ship.pos + glm::vec3(0);
-	
-	targets[1].color = glm::convertSRGBToLinear(glm::vec3(1.0f, 1.0f, 0.4f));
-	targets[1].pos = ship.pos + glm::vec3(5000, 5000, 0);
-	
-	targets[2].color = glm::convertSRGBToLinear(glm::vec3(1.0f, 0.4f, 0.4f));
-	targets[2].pos =ship.pos + glm::vec3(0, 0, 40000);
-	
 	uint64_t prevFrameEnd = 0, prevFrameAfterSwap = 0;
+	
+	Game game;
+	bool inGame = false;
+	
+	float gameScreenFade = 1;
+	
+	ui::Button gameOverPlayAgain = { "Play Again" };
+	ui::Button gameOverMainMenu = { "Main Menu" };
 	
 	bool shouldClose = false;
 	while (!shouldClose) {
 		const uint64_t thisFrameBegin = SDL_GetPerformanceCounter();
-		const float currentTime = (float)thisFrameBegin / (float)perfCounterFrequency;
-		const float dt = (thisFrameBegin - lastFrameBegin) / (float)perfCounterFrequency;
+		dt = (thisFrameBegin - lastFrameBegin) / (float)perfCounterFrequency;
 		lastFrameBegin = thisFrameBegin;
 		prevInput = curInput;
 		curInput.mouseDX = 0;
@@ -157,8 +146,10 @@ int main() {
 					frustumPlanesFrozen = !frustumPlanesFrozen;
 				if (event.key.keysym.scancode == SDL_SCANCODE_F7)
 					drawAsteroidsWireframe = !drawAsteroidsWireframe;
+				if (event.key.keysym.scancode == SDL_SCANCODE_F9)
+					game.remTime = 60;
 				if (event.key.keysym.scancode == SDL_SCANCODE_C)
-					ship.stopped = true;
+					game.ship.stopped = true;
 				if (event.key.keysym.scancode == SDL_SCANCODE_X)
 					shouldHideTargetInfo = !shouldHideTargetInfo;
 				if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
@@ -169,12 +160,11 @@ int main() {
 				curInput.mouseDY += event.motion.yrel;
 			}
 		}
-		SDL_GetMouseState(&curInput.mouseX, &curInput.mouseY);
+		curInput.leftMouse = (SDL_GetMouseState(&curInput.mouseX, &curInput.mouseY) & SDL_BUTTON_LMASK) != 0;
 		
-		ship.update(dt, curInput, prevInput);
-		glm::vec3 boxPositionOffset = glm::vec3(ship.boxIndex) * asteroidBoxSize;
-		
-		remTime -= dt;
+		if (inGame) {
+			game.runFrame(curInput, prevInput);
+		}
 		
 		uint64_t fenceWaitTime = 0;
 		if (fences[renderer::frameCycleIndex] != nullptr) {
@@ -188,26 +178,20 @@ int main() {
 		SDL_GL_GetDrawableSize(window, &drawableWidth, &drawableHeight);
 		renderer::updateFramebuffers(drawableWidth, drawableHeight);
 		
-		float fov = glm::radians(glm::mix(LOW_FOV, HIGH_FOV, ship.speed01));
-		glm::mat4 projMatrix = glm::perspectiveFov(fov, (float)drawableWidth, (float)drawableHeight, Z_NEAR, Z_FAR);
-		glm::mat4 inverseProjMatrix = glm::inverse(projMatrix);
-		glm::mat4 vpMatrixInv = ship.viewMatrixInv * inverseProjMatrix;
-		ShadowMapMatrices shadowMapMatrices = calculateShadowMapMatrices(vpMatrixInv, sunDir);
-		
 		RenderSettings renderSettings;
-		renderSettings.vpMatrix = projMatrix * ship.viewMatrix;
-		renderSettings.vpMatrixInverse = vpMatrixInv;
-		renderSettings.cameraPos = glm::vec3(ship.viewMatrixInv[3]);
-		renderSettings.gameTime = currentTime;
-		renderSettings.sunColor = { 1, 0.9f, 0.95f };
-		renderSettings.sunDir = sunDir;
+		if (inGame) {
+			game.initRenderSettings(drawableWidth, drawableHeight, renderSettings);
+		} else {
+			menu::initRenderSettings(drawableWidth, drawableHeight, renderSettings);
+		}
+		
+		ShadowMapMatrices shadowMapMatrices = calculateShadowMapMatrices(renderSettings.vpMatrixInverse, SUN_DIR);
 		std::copy_n(shadowMapMatrices.matrices, NUM_SHADOW_CASCADES, renderSettings.shadowMatrices);
 		renderer::updateRenderSettings(renderSettings);
 		
 		if (!frustumPlanesFrozen) {
-			frustumPlanes = createFrustumPlanes(vpMatrixInv);
-			
-			prepareAsteroids(renderSettings.cameraPos, frustumPlanes.data(), shadowMapMatrices.frustumPlanes);
+			frustumPlanes = createFrustumPlanes(renderSettings.vpMatrixInverse);
+			prepareAsteroids(frustumPlanes.data(), shadowMapMatrices.frustumPlanes);
 		}
 		
 		renderShadows([&] (uint32_t cascade) {
@@ -217,43 +201,93 @@ int main() {
 		renderer::beginMainPass();
 		
 		glBindTextureUnit(2, shadowMap);
-		ship.draw();
+		
+		if (inGame) {
+			game.ship.draw();
+		}
 		drawAsteroids(drawAsteroidsWireframe);
 		renderer::drawSkybox();
 		
-		beginDrawTargets(currentTime, dt);
-		for (Target& target : targets) {
-			target.truePos = target.pos - boxPositionOffset;
-			drawTarget(target);
+		if (inGame) {
+			beginDrawTargets();
+			for (Target& target : game.targets) {
+				drawTarget(target, game.targetsAlpha);
+			}
+			endDrawTargets();
 		}
-		endDrawTargets();
 		
-		drawParticles(currentTime, renderSettings.cameraPos);
+		drawParticles(renderSettings.cameraPos);
 		
-		renderer::endMainPass(prevViewProj, dt);
+		if (inGame) {
+			if (game.isGameOver) {
+				gameScreenFade = std::max(gameScreenFade - dt * 2, 0.4f);
+			} else {
+				gameScreenFade = std::min(gameScreenFade + dt * 2, 1.0f);
+			}
+		} else {
+			gameScreenFade = std::max(gameScreenFade - dt * 2, 0.8f);
+		}
+		
+		glm::vec3 vignetteColor(0);
+		glm::vec3 overlayColor(0.5f);
+		if (inGame && !game.isGameOver) {
+			vignetteColor = game.vignetteColor * game.vignetteColorFade;
+		}
+		renderer::endMainPass(vignetteColor, glm::vec3(gameScreenFade));
 		
 		ui::begin(drawableWidth, drawableHeight);
 		
-		for (Target& target : targets) {
-			drawTargetUI(target, renderSettings.vpMatrix, glm::vec2(drawableWidth, drawableHeight), ship, remTime);
+		if (inGame) {
+			for (Target& target : game.targets) {
+				drawTargetUI(target, renderSettings.vpMatrix, glm::vec2(drawableWidth, drawableHeight), game.ship, game.remTime);
+			}
+			
+			if (game.isGameOver) {
+				Rect gameOverSrcRect = { glm::vec2(0, 150), glm::vec2(256, 45) };
+				glm::vec2 centerScreen = glm::vec2(drawableWidth / 2.0f, drawableHeight / 2.0f);
+				ui::drawSprite(centerScreen - gameOverSrcRect.size / 2.0f, gameOverSrcRect);
+				
+				std::string_view scoreLabel = "Score:";
+				std::string scoreText = std::to_string(game.score);
+				float scoreLabelWidth = ui::textWidth(scoreLabel) + 10;
+				float totScoreWidth = scoreLabelWidth + ui::textWidth(scoreText);
+				float scoreTextY = centerScreen.y - 60;
+				ui::drawText(scoreLabel, glm::vec2(centerScreen.x - totScoreWidth / 2, scoreTextY), glm::vec4(1, 1, 1, 0.6f));
+				ui::drawText(scoreText, glm::vec2(centerScreen.x - totScoreWidth / 2 + scoreLabelWidth, scoreTextY));
+				
+				gameOverPlayAgain.pos = centerScreen - glm::vec2(0, 110);
+				gameOverMainMenu.pos = centerScreen - glm::vec2(0, 150);
+				
+				if (gameOverPlayAgain(curInput)) {
+					game.newGame();
+				}
+				
+				if (gameOverMainMenu(curInput)) {
+					inGame = false;
+				}
+			}
+		} else {
+			menu::updateAndDraw(drawableWidth, drawableHeight, curInput, inGame, shouldClose);
+			if (inGame) {
+				game.newGame();
+			}
 		}
 		
 #ifdef DEBUG
 		uint64_t elapsedTicks = SDL_GetPerformanceCounter() - prevFrameEnd;
-		
 		auto floatToStr = [&] (float f) {
 			std::ostringstream stream;
 			stream << std::setprecision(2) << std::fixed << f;
 			return stream.str();
 		};
-		
-		glm::vec3 truePos = ship.pos + boxPositionOffset;
+		const glm::vec3 truePos = game.ship.pos + glm::vec3(game.ship.boxIndex) * ASTEROID_BOX_SIZE;
 		std::string debugLines[] = {
-			"vel: " + floatToStr(ship.forwardVel),
+			"vel: " + floatToStr(game.ship.forwardVel),
 			"tpos: " + floatToStr(truePos.x) + ", " + floatToStr(truePos.y) + ", " + floatToStr(truePos.z),
-			"bpos: " + floatToStr(ship.pos.x) + ", " + floatToStr(ship.pos.y) + ", " + floatToStr(ship.pos.z),
-			"box: " + std::to_string(ship.boxIndex.x) + ", " + std::to_string(ship.boxIndex.y) + ", " + std::to_string(ship.boxIndex.z),
+			"bpos: " + floatToStr(game.ship.pos.x) + ", " + floatToStr(game.ship.pos.y) + ", " + floatToStr(game.ship.pos.z),
+			"box: " + std::to_string(game.ship.boxIndex.x) + ", " + std::to_string(game.ship.boxIndex.y) + ", " + std::to_string(game.ship.boxIndex.z),
 			"atot: " + std::to_string(numAsteroids),
+			(game.ship.intersected ? "int: true" : "int: false"),
 			"fps: " + floatToStr(1.0f / dt),
 			"frame: " + floatToStr(1000 * (float)elapsedTicks / (float)perfCounterFrequency) + "ms",
 			"sync: " + floatToStr(1000 * (float)fenceWaitTime / (float)perfCounterFrequency) + "ms",
@@ -263,6 +297,27 @@ int main() {
 			ui::drawText(debugLines[i], glm::vec2(10, drawableHeight - 30 - 25 * i), glm::vec4(1, 1, 1, 0.5f));
 		}
 #endif
+		
+		if (inGame) {
+			if (game.invincibleTime > 0) {
+				std::string_view invulnString = "invulnerable";
+				glm::vec4 invulnColor(0.5f, 0.5f, 1.0f, std::min(game.invincibleTime * 5, 1.0f));
+				ui::drawTextCentered(invulnString, glm::vec2(drawableWidth / 2.0f, 70), invulnColor);
+			}
+			
+			std::string speedString = std::to_string((int)std::round(game.ship.forwardVel)) + "m/s";
+			ui::drawText(speedString, glm::vec2(drawableWidth / 2.0f - ui::textWidth(speedString) / 2, 5), glm::vec4(1));
+			
+			std::string timeString = std::to_string((int)std::round(game.remTime)) + "s";
+			ui::drawText(timeString, glm::vec2(drawableWidth / 2.0f + 60, 5), glm::vec4(1));
+			
+			std::string scoreString = std::to_string(game.score);
+			ui::drawText(scoreString, glm::vec2(drawableWidth / 2.0f - 60 - ui::textWidth(scoreString), 5), glm::vec4(1));
+			
+			ui::drawText("speed", glm::vec2(drawableWidth / 2.0f - ui::textWidth("speed") / 2, 30), glm::vec4(1, 1, 1, 0.5f));
+			ui::drawText("time", glm::vec2(drawableWidth / 2.0f + 60, 30), glm::vec4(1, 1, 1, 0.5f));
+			ui::drawText("score", glm::vec2(drawableWidth / 2.0f - 60 - ui::textWidth("score"), 30), glm::vec4(1, 1, 1, 0.5f));
+		}
 		
 		ui::end();
 		
@@ -274,8 +329,6 @@ int main() {
 		SDL_GL_SwapWindow(window);
 		
 		prevFrameAfterSwap = SDL_GetPerformanceCounter();
-		
-		prevViewProj = renderSettings.vpMatrix;
 	}
 	
 	SDL_GL_DeleteContext(glContext);

@@ -13,7 +13,14 @@ struct RenderSettings {
 	float     _padding1;
 	glm::vec3 sunDir;
 	float     _padding2;
+	glm::vec3 plPosition;
+	float     _padding3;
+	glm::vec3 plColor;
+	float     _padding4;
 };
+
+extern const glm::vec3 SUN_DIR;
+extern const glm::vec3 SUN_COLOR;
 
 namespace renderer {
 	constexpr uint32_t frameCycleLen = 4;
@@ -38,5 +45,5 @@ namespace renderer {
 	
 	void beginMainPass();
 	
-	void endMainPass(const glm::mat4& prevViewProj, float dt);
+	void endMainPass(const glm::vec3& vignetteColor, const glm::vec3& colorScale);
 }

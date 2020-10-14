@@ -1,7 +1,9 @@
 #pragma once
 
 struct Ship {
-	void update(float dt, const struct InputState& curInput, const struct InputState& prevInput);
+	void update(const struct InputState& curInput, const struct InputState& prevInput);
+	
+	bool checkCollision() const;
 	
 	void draw() const;
 	
@@ -12,13 +14,15 @@ struct Ship {
 	glm::mat4 viewMatrixInv;
 	
 	bool stopped = false;
+	bool intersected = false;
 	
 	glm::ivec3 boxIndex;
 	glm::vec3 pos { 0, 0, 0 };
-	glm::vec3 vel { 0, 0, 5 };
+	glm::vec3 vel { 0, 0, 0 };
 	
 	glm::quat rotation;
 	glm::quat cameraRotation;
+	glm::vec3 cameraPosition;
 	
 	float rollVelocity = 0;
 	float rollOffset = 0;

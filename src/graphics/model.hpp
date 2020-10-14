@@ -28,6 +28,10 @@ struct Model {
 	uint32_t numMeshes = 0;
 	Mesh meshes[MAX_MESHES];
 	
+	glm::vec3 minPos;
+	glm::vec3 maxPos;
+	float sphereRadius = 0;
+	
 	void initialize(std::span<Vertex> vertices, std::span<uint32_t> indices);
 	void loadObj(const std::string& path);
 	

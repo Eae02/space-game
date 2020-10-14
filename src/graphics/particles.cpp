@@ -38,7 +38,7 @@ void initializeParticles() {
 	glVertexArrayVertexBuffer(particlesVao, 0, particlesBuffer, 0, sizeof(glm::vec4));
 }
 
-void drawParticles(float time, const glm::vec3& cameraPos) {
+void drawParticles(const glm::vec3& cameraPos) {
 	glm::vec3 boxOffset = glm::floor(cameraPos / PARTICLE_BOX_SIZE) * PARTICLE_BOX_SIZE;
 	glm::vec3 wrappingOffset = PARTICLE_BOX_SIZE * 1.5f - (cameraPos - boxOffset);
 	glm::vec3 globalOffset = cameraPos - PARTICLE_BOX_SIZE * 0.5f;

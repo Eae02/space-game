@@ -67,7 +67,7 @@ glm::vec4 rotations[3] = {
 bool shouldHideTargetInfo;
 float targetInfoOpacity = 1;
 
-void beginDrawTargets(float gameTime, float dt) {
+void beginDrawTargets() {
 	if (shouldHideTargetInfo) {
 		targetInfoOpacity = std::max(targetInfoOpacity - dt * 8, 0.0f);
 	} else {
@@ -107,9 +107,9 @@ void endDrawTargets() {
 	glDisable(GL_CULL_FACE);
 }
 
-void drawTarget(const Target& target) {
+void drawTarget(const Target& target, float alpha) {
 	glUniform3fv(0, 1, (const float*)&target.truePos);
-	glUniform3fv(1, 1, (const float*)&target.color);
+	glUniform4f(1, target.color.r, target.color.g, target.color.b, alpha);
 	glDrawElements(GL_TRIANGLES, sphereTriangles[TARGET_SPHERE_LOD_LEVEL].size() * 3, GL_UNSIGNED_INT, nullptr);
 }
 

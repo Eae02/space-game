@@ -13,6 +13,7 @@ struct InputState {
 	int mouseY = 0;
 	int mouseDX = 0;
 	int mouseDY = 0;
+	bool leftMouse = false;
 	
 	void keyStateChanged(int scancode, bool newState);
 };

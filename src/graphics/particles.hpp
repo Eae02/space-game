@@ -2,4 +2,4 @@
 
 void initializeParticles();
 
-void drawParticles(float time, const glm::vec3& cameraPos);
+void drawParticles(const glm::vec3& cameraPos);

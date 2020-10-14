@@ -55,7 +55,7 @@ std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed) {
 	
 	std::vector<std::tuple<glm::vec3, uint32_t, float>> asteroids;
 	auto addAsteroid = [&] (const glm::vec3& pos, uint32_t variant) -> bool {
-		if (pos.x < 0 || pos.y < 0 || pos.z < 0 || pos.x >= asteroidBoxSize || pos.y >= asteroidBoxSize || pos.z >= asteroidBoxSize)
+		if (pos.x < 0 || pos.y < 0 || pos.z < 0 || pos.x >= ASTEROID_BOX_SIZE || pos.y >= ASTEROID_BOX_SIZE || pos.z >= ASTEROID_BOX_SIZE)
 			return false;
 		
 		float thisVarRadius = asteroidVariants[variant].size;
@@ -91,7 +91,7 @@ std::vector<std::pair<glm::vec3, uint32_t>> generateAsteroids(uint32_t seed) {
 	
 	uint32_t firstVariant = variantDist(rng);
 	float firstRadius = asteroidVariants[firstVariant].size;
-	std::uniform_real_distribution<float> startDist(firstRadius, asteroidBoxSize - firstRadius);
+	std::uniform_real_distribution<float> startDist(firstRadius, ASTEROID_BOX_SIZE - firstRadius);
 	addAsteroid(glm::vec3(startDist(rng), startDist(rng), startDist(rng)), firstVariant);
 	
 	while (!activeSet.empty()) {

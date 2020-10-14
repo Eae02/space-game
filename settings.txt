@@ -1,7 +1,6 @@
 fullscreen:false
 bloom:true
-vsync:false
+vsync:true
 shadowRes:2048
 mouseInput:false
-worldSize:4
 lodDist:200
