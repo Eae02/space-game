@@ -128,7 +128,7 @@ int main() {
 	bool shouldClose = false;
 	while (!shouldClose) {
 		const uint64_t thisFrameBegin = SDL_GetPerformanceCounter();
-		dt = (thisFrameBegin - lastFrameBegin) / (float)perfCounterFrequency;
+		dt = std::min((thisFrameBegin - lastFrameBegin) / (float)perfCounterFrequency, 0.1f);
 		lastFrameBegin = thisFrameBegin;
 		prevInput = curInput;
 		curInput.mouseDX = 0;

@@ -393,6 +393,19 @@ bool anyAsteroidIntersects(const glm::vec3& rectMin, const glm::vec3& rectMax,
 	glm::vec3 sphereCenter(boxTransform * glm::vec4(((rectMax + rectMin) / 2.0f), 1));
 	float sphereRadius = glm::distance(sphereCenter, glm::vec3(boxTransform * glm::vec4(rectMax, 1)));
 	
+	const glm::vec3 corners[] = { rectMin, rectMax };
+	glm::vec3 worldMin(INFINITY);
+	glm::vec3 worldMax(-INFINITY);
+	for (int x = 0; x < 2; x++) {
+		for (int y = 0; y < 2; y++) {
+			for (int z = 0; z < 2; z++) {
+				glm::vec3 worldPos(boxTransform * glm::vec4(corners[x].x, corners[y].y, corners[z].z, 1));
+				worldMin = glm::min(worldMin, worldPos);
+				worldMax = glm::max(worldMax, worldPos);
+			}
+		}
+	}
+	
 	auto checkAsteroid = [&] (const AsteroidInstance& asteroid) -> bool {
 		glm::vec3 pos = glm::mod(asteroid.pos + asteroidWrappingOffset, ASTEROID_BOX_SIZE) + asteroidGlobalOffset;
 		
@@ -414,9 +427,35 @@ bool anyAsteroidIntersects(const glm::vec3& rectMin, const glm::vec3& rectMax,
 		return false;
 	};
 	
-	for (const AsteroidInstance& a : asteroids) {
-		if (checkAsteroid(a))
-			return true;
+	glm::vec3 aboxMin = worldMin - asteroidGlobalOffset - asteroidWrappingOffset;
+	glm::vec3 aboxMax = worldMax - asteroidGlobalOffset - asteroidWrappingOffset;
+	glm::ivec3 cellMin(glm::floor(aboxMin / ASTEROIDS_CELL_SIZE));
+	glm::ivec3 cellMax(glm::floor(aboxMax / ASTEROIDS_CELL_SIZE));
+	
+	static std::vector<uint32_t> lastCheckCallId;
+	static uint32_t callId = 0;
+	if (lastCheckCallId.empty()) {
+		lastCheckCallId.resize(numAsteroids, 0);
 	}
+	callId++;
+	
+	for (int cx = cellMin.x; cx <= cellMax.x; cx++) {
+		int cxm = ((cx % ASTEROIDS_GRID_SIZE) + ASTEROIDS_GRID_SIZE) % ASTEROIDS_GRID_SIZE;
+		for (int cy = cellMin.y; cy <= cellMax.y; cy++) {
+			int cym = ((cy % ASTEROIDS_GRID_SIZE) + ASTEROIDS_GRID_SIZE) % ASTEROIDS_GRID_SIZE;
+			for (int cz = cellMin.z; cz <= cellMax.z; cz++) {
+				int czm = ((cz % ASTEROIDS_GRID_SIZE) + ASTEROIDS_GRID_SIZE) % ASTEROIDS_GRID_SIZE;
+				for (uint32_t asteroid : asteroidGrid[cxm][cym][czm]) {
+					if (lastCheckCallId[asteroid] != callId) {
+						lastCheckCallId[asteroid] = callId;
+						if (checkAsteroid(asteroids[asteroid])) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	return false;
 }

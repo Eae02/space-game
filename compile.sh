@@ -2,7 +2,7 @@
 rm -R obj/src/* 2> /dev/null
 
 CFLAGS_DBG="-g -DDEBUG"
-CFLAGS_REL="-Ofast"
+CFLAGS_REL="-O2"
 
 COMPILER="g++"
 PKG_CONFIG="pkg-config"
@@ -29,7 +29,7 @@ for f in $(find src -name "*.cpp" -not -path "*asteroids_gen.cpp"); do
 	$COMPILER $f $CFLAGS -include pch.hpp -c -o obj/$f.o &
 done
 
-$COMPILER src/graphics/asteroids_gen.cpp $CFLAGS -include pch.hpp -O2 -g -c -o obj/src/graphics/asteroids_gen.cpp.o &
+$COMPILER src/graphics/asteroids_gen.cpp $CFLAGS -include pch.hpp -O2 -g0 -c -o obj/src/graphics/asteroids_gen.cpp.o &
 
 wait
 
