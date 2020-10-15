@@ -93,12 +93,18 @@ void Ship::update(const InputState& curInput, const InputState& prevInput) {
 	glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), rollOffset, rollAxis) * glm::mat4_cast(rotation);
 	glm::mat4 invRotationMatrix = glm::transpose(rotationMatrix);
 	
+	float moveDist = glm::length(moveVector);
+	if (moveDist > 10) {
+		moveVector *= 10.0f / moveDist;
+		moveDist = 10;
+	}
+	
 	//Updates the camera
 	cameraRotation = glm::slerp(cameraRotation, rotation, std::min(2 * dt, 1.0f));
 	viewMatrix =
 		glm::lookAt(glm::vec3(0, 5, -14), glm::vec3(0, 3, 0), glm::vec3(0, 1, 0)) *
 		glm::transpose(glm::mat4_cast(cameraRotation)) *
-		glm::translate(glm::mat4(1), -pos);
+		glm::translate(glm::mat4(1), -pos - moveVector);
 	viewMatrixInv = glm::inverse(viewMatrix);
 	cameraPosition = glm::vec3(viewMatrixInv[3]);
 	
@@ -106,7 +112,6 @@ void Ship::update(const InputState& curInput, const InputState& prevInput) {
 	
 	//Collision detection
 	intersected = false;
-	const float moveDist = glm::length(moveVector);
 	constexpr float COLLISION_DETECT_MAX_STEP_LEN = 4;
 	const int numColDetectSteps = std::max((int)std::ceil(moveDist / COLLISION_DETECT_MAX_STEP_LEN), 1);
 	for (int step = 1; step <= numColDetectSteps; step++) {
