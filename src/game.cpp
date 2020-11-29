@@ -22,16 +22,10 @@ Game::Game() {
 	targets[0].color = glm::convertSRGBToLinear(glm::vec3(0.4f, 0.7f, 1.0f));
 	targets[1].color = glm::convertSRGBToLinear(glm::vec3(1.0f, 1.0f, 0.4f));
 	targets[2].color = glm::convertSRGBToLinear(glm::vec3(1.0f, 0.4f, 0.4f));
-	targets[0].basePoints = BLUE_BASE_PTS;
-	targets[1].basePoints = YELLOW_BASE_PTS;
-	targets[2].basePoints = RED_BASE_PTS;
-	targets[0].timePoints = BLUE_TIME_PTS;
-	targets[1].timePoints = YELLOW_TIME_PTS;
-	targets[2].timePoints = RED_TIME_PTS;
 }
 
 void Game::newGame() {
-	score = 0;
+	std::fill_n(score, 3, 0);
 	fadingTargets = true;
 	targetsAlpha = 0;
 	vignetteColor = glm::vec3(0);
@@ -72,20 +66,22 @@ void Game::runFrame(const InputState& curInput, const InputState& prevInput) {
 	}
 	
 	if (!fadingTargets) {
-		for (Target& target : targets) {
-			if (glm::distance(ship.pos, target.truePos) < (TARGET_RADIUS * 1.2f + res::shipModel.sphereRadius)) {
+		for (int t = 0; t < 3; t++) {
+			if (glm::distance(ship.pos, targets[t].truePos) < (TARGET_RADIUS * 1.2f + res::shipModel.sphereRadius)) {
 				targetsAlpha = 1;
 				fadingTargets = true;
-				vignetteColor = target.color * 0.5f;
+				vignetteColor = targets[t].color * 0.5f;
 				vignetteColorFade = 1.0f;
-				int addScore = target.basePoints + (int)std::round(target.timePoints * remTime);
-				score += addScore;
+				int addScore = TARGET_BASE_PTS + (int)std::round(TARGET_TIME_PTS * remTime);
+				score[t] += addScore;
 				blueRequiredSpeed += 50;
 				invincibleTime = 2;
 				break;
 			}
 		}
-		remTime -= dt;
+		if (ship.forwardVel > 1) {
+			remTime -= dt;
+		}
 		if (remTime < 0 && !isGameOver) {
 			isGameOver = true;
 			remTime = 0;
@@ -135,4 +131,17 @@ void Game::initRenderSettings(uint32_t drawableWidth, uint32_t drawableHeight, R
 	renderSettings.sunDir = SUN_DIR;
 	renderSettings.plColor = targetPlColor;
 	renderSettings.plPosition = targetPlPos;
+}
+
+ColoredStringBuilder Game::buildScoreString() {
+	constexpr float POINT_COLOR_WHITE_FADE = 0.5f;
+	ColoredStringBuilder scoreStringBuilder;
+	for (int t = 2; t >= 0; t--) {
+		std::string scoreString = std::to_string(score[t]);
+		scoreStringBuilder.push(scoreString, glm::vec4(glm::mix(targets[t].color, glm::vec3(1), POINT_COLOR_WHITE_FADE), 1));
+		if (t != 0) {
+			scoreStringBuilder.push(" ", glm::vec4(1));
+		}
+	}
+	return scoreStringBuilder;
 }

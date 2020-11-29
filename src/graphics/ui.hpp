@@ -11,6 +11,13 @@ struct Rect {
 
 struct InputState;
 
+struct ColoredStringBuilder {
+	std::string text;
+	std::vector<glm::vec4> colors;
+	
+	void push(std::string_view newText, const glm::vec4& color);
+};
+
 namespace ui {
 	constexpr float FONT_SIZE = 20;
 	
@@ -21,6 +28,10 @@ namespace ui {
 	void drawSprite(const glm::vec2& pos, const Rect& srcRect, const glm::vec4& color = glm::vec4(1));
 	
 	void drawText(std::string_view string, const glm::vec2& pos, const glm::vec4& color = glm::vec4(1));
+	
+	void drawText(std::string_view string, const glm::vec2& pos, std::span<const glm::vec4> colors);
+	
+	void drawText(const ColoredStringBuilder& builder, const glm::vec2& pos);
 	
 	int textWidth(std::string_view text);
 	

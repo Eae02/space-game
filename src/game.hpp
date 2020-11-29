@@ -2,11 +2,12 @@
 
 #include "ship.hpp"
 #include "target.hpp"
+#include "graphics/ui.hpp"
 
 struct Game {
 	Ship ship;
 	
-	int score;
+	int score[3];
 	bool fadingTargets;
 	float targetsAlpha;
 	
@@ -32,4 +33,6 @@ struct Game {
 	void initRenderSettings(uint32_t drawableWidth, uint32_t drawableHeight, struct RenderSettings& renderSettings) const;
 	
 	glm::vec3 getTargetPosition(float speed) const;
+	
+	ColoredStringBuilder buildScoreString();
 };

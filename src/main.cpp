@@ -247,13 +247,14 @@ int main() {
 				glm::vec2 centerScreen = glm::vec2(drawableWidth / 2.0f, drawableHeight / 2.0f);
 				ui::drawSprite(centerScreen - gameOverSrcRect.size / 2.0f, gameOverSrcRect);
 				
+				ColoredStringBuilder scoreStringBuilder = game.buildScoreString();
 				std::string_view scoreLabel = "Score:";
-				std::string scoreText = std::to_string(game.score);
+				
 				float scoreLabelWidth = ui::textWidth(scoreLabel) + 10;
-				float totScoreWidth = scoreLabelWidth + ui::textWidth(scoreText);
+				float totScoreWidth = scoreLabelWidth + ui::textWidth(scoreStringBuilder.text);
 				float scoreTextY = centerScreen.y - 60;
 				ui::drawText(scoreLabel, glm::vec2(centerScreen.x - totScoreWidth / 2, scoreTextY), glm::vec4(1, 1, 1, 0.6f));
-				ui::drawText(scoreText, glm::vec2(centerScreen.x - totScoreWidth / 2 + scoreLabelWidth, scoreTextY));
+				ui::drawText(scoreStringBuilder, glm::vec2(centerScreen.x - totScoreWidth / 2 + scoreLabelWidth, scoreTextY));
 				
 				gameOverPlayAgain.pos = centerScreen - glm::vec2(0, 110);
 				gameOverMainMenu.pos = centerScreen - glm::vec2(0, 150);
@@ -311,8 +312,8 @@ int main() {
 			std::string timeString = std::to_string((int)std::round(game.remTime)) + "s";
 			ui::drawText(timeString, glm::vec2(drawableWidth / 2.0f + 60, 5), glm::vec4(1));
 			
-			std::string scoreString = std::to_string(game.score);
-			ui::drawText(scoreString, glm::vec2(drawableWidth / 2.0f - 60 - ui::textWidth(scoreString), 5), glm::vec4(1));
+			ColoredStringBuilder scoreStringBuilder = game.buildScoreString();
+			ui::drawText(scoreStringBuilder, glm::vec2(drawableWidth / 2.0f - 60 - ui::textWidth(scoreStringBuilder.text), 5));
 			
 			ui::drawText("speed", glm::vec2(drawableWidth / 2.0f - ui::textWidth("speed") / 2, 30), glm::vec4(1, 1, 1, 0.5f));
 			ui::drawText("time", glm::vec2(drawableWidth / 2.0f + 60, 30), glm::vec4(1, 1, 1, 0.5f));

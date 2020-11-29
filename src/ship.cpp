@@ -89,7 +89,7 @@ void Ship::update(const InputState& curInput, const InputState& prevInput) {
 	}
 	speed01 = std::max((forwardVel - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0.0f);
 	
-	glm::vec3 moveVector = rotation * (glm::vec3(vel.x, 0, forwardVel) * dt);
+	glm::vec3 moveVector = rotation * (glm::vec3(vel.x * std::min(forwardVel, 1.0f), 0, forwardVel) * dt);
 	glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), rollOffset, rollAxis) * glm::mat4_cast(rotation);
 	glm::mat4 invRotationMatrix = glm::transpose(rotationMatrix);
 	

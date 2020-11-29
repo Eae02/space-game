@@ -9,6 +9,12 @@
 #include <bitset>
 #include <GL/glew.h>
 
+void ColoredStringBuilder::push(std::string_view newText, const glm::vec4& color) {
+	text.append(newText);
+	for (size_t i = 0; i < newText.size(); i++)
+		colors.push_back(color);
+}
+
 namespace ui {
 	constexpr uint32_t MAX_SPRITES_PER_FRAME = 1024;
 	
@@ -172,9 +178,11 @@ namespace ui {
 	static constexpr int CHAR_PADDING = 2;
 	static constexpr float SPACE_ADVANCE = 8;
 	
-	void drawText(std::string_view string, const glm::vec2& pos, const glm::vec4& color) {
+	void drawText(std::string_view string, const glm::vec2& pos, std::span<const glm::vec4> colors) {
 		float xOffset = 0;
+		size_t colorIndex = 0;
 		for (char c : string) {
+			colorIndex++;
 			size_t idx = (size_t)c;
 			if (idx >= fontChars.size())
 				idx = DEFAULT_CHAR;
@@ -190,10 +198,18 @@ namespace ui {
 			srcRect.min = { fontChars[idx].textureX, fontChars[idx].textureY };
 			srcRect.size = { fontChars[idx].width, fontChars[idx].height };
 			
-			drawSprite({ drawX, drawY }, srcRect, color);
+			drawSprite({ drawX, drawY }, srcRect, colors[std::min(colorIndex, colors.size()) - 1]);
 			
 			xOffset += fontChars[idx].xAdvance - CHAR_PADDING * 2;
 		}
+	}
+	
+	void drawText(const ColoredStringBuilder& builder, const glm::vec2& pos) {
+		drawText(builder.text, pos, builder.colors);
+	}
+	
+	void drawText(std::string_view string, const glm::vec2& pos, const glm::vec4& color) {
+		drawText(string, pos, std::span<const glm::vec4>(&color, 1));
 	}
 	
 	int textWidth(std::string_view text) {
