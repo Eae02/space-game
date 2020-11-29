@@ -120,7 +120,7 @@ void Game::initRenderSettings(uint32_t drawableWidth, uint32_t drawableHeight, R
 	}
 	
 	constexpr float LOW_FOV = 75.0f;
-	constexpr float HIGH_FOV = 110.0f;
+	constexpr float HIGH_FOV = 100.0f;
 	
 	float fov = glm::radians(glm::mix(LOW_FOV, HIGH_FOV, ship.speed01));
 	glm::mat4 projMatrix = glm::perspectiveFov(fov, (float)drawableWidth, (float)drawableHeight, Z_NEAR, Z_FAR);

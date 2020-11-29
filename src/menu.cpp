@@ -89,7 +89,7 @@ void menu::initRenderSettings(uint32_t drawableWidth, uint32_t drawableHeight, R
 	float roll = gameTime * CAMERA_ROLL_SPEED;
 	glm::vec3 up(std::sin(roll), 0, std::cos(roll));
 	
-	glm::vec3 cameraPos = cameraFlyDir * gameTime * CAMERA_FLY_SPEED;
+	glm::vec3 cameraPos = glm::mod(cameraFlyDir * gameTime * CAMERA_FLY_SPEED, ASTEROID_BOX_SIZE);
 	glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraPos + cameraFlyDir, up);
 	glm::mat4 viewMatrixInv = glm::inverse(viewMatrix);
 	

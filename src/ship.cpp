@@ -94,9 +94,9 @@ void Ship::update(const InputState& curInput, const InputState& prevInput) {
 	glm::mat4 invRotationMatrix = glm::transpose(rotationMatrix);
 	
 	float moveDist = glm::length(moveVector);
-	if (moveDist > 10) {
-		moveVector *= 10.0f / moveDist;
-		moveDist = 10;
+	if (moveDist > 50) {
+		moveVector *= 50.0f / moveDist;
+		moveDist = 50;
 	}
 	
 	//Updates the camera

@@ -7,7 +7,7 @@ namespace settings {
 	bool fullscreen         = false;
 	bool bloom              = true;
 	bool vsync              = false;
-	bool mouseInput         = true;
+	bool mouseInput         = false;
 	uint32_t shadowRes      = 1024;
 	uint32_t worldSize      = 4;
 	uint32_t lodDist        = 300;
