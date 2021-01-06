@@ -3,6 +3,7 @@
 #include "shader.hpp"
 #include "shadows.hpp"
 #include "sphere.hpp"
+#include "collision_debug.hpp"
 #include "../settings.hpp"
 #include "../resources.hpp"
 #include "../utils.hpp"
@@ -394,6 +395,7 @@ bool anyAsteroidIntersects(const glm::vec3& rectMin, const glm::vec3& rectMax,
 	float sphereRadius = glm::distance(sphereCenter, glm::vec3(boxTransform * glm::vec4(rectMax, 1)));
 	
 	const glm::vec3 corners[] = { rectMin, rectMax };
+	glm::vec3 cornersWorld[2][2][2];
 	glm::vec3 worldMin(INFINITY);
 	glm::vec3 worldMax(-INFINITY);
 	for (int x = 0; x < 2; x++) {
@@ -402,8 +404,25 @@ bool anyAsteroidIntersects(const glm::vec3& rectMin, const glm::vec3& rectMax,
 				glm::vec3 worldPos(boxTransform * glm::vec4(corners[x].x, corners[y].y, corners[z].z, 1));
 				worldMin = glm::min(worldMin, worldPos);
 				worldMax = glm::max(worldMax, worldPos);
+				cornersWorld[x][y][z] = worldPos;
 			}
 		}
+	}
+	
+	if (collisionDebug::enabled) {
+		const glm::vec4 playerDebugColor(0.2f, 1, 0.2f, 0.5f);
+		collisionDebug::addLine(cornersWorld[0][0][0], cornersWorld[1][0][0], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[0][1][0], cornersWorld[1][1][0], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[0][0][1], cornersWorld[1][0][1], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[0][1][1], cornersWorld[1][1][1], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[0][0][0], cornersWorld[0][1][0], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[1][0][0], cornersWorld[1][1][0], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[0][0][1], cornersWorld[0][1][1], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[1][0][1], cornersWorld[1][1][1], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[0][0][0], cornersWorld[0][0][1], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[1][0][0], cornersWorld[1][0][1], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[0][1][0], cornersWorld[0][1][1], playerDebugColor);
+		collisionDebug::addLine(cornersWorld[1][1][0], cornersWorld[1][1][1], playerDebugColor);
 	}
 	
 	auto checkAsteroid = [&] (const AsteroidInstance& asteroid) -> bool {
@@ -417,6 +436,10 @@ bool anyAsteroidIntersects(const glm::vec3& rectMin, const glm::vec3& rectMax,
 		
 		glm::mat4 inverseTransform = boxTransformInv * glm::translate(glm::mat4(1), pos) * glm::mat4(rotationMatrix);
 		for (const glm::vec3& vertex : asteroidVariants[asteroid.variant].collisionVertices) {
+			if (collisionDebug::enabled) {
+				collisionDebug::addPoint(rotationMatrix * vertex + pos, glm::vec4(1, 0.2f, 0.2f, 0.5f));
+			}
+			
 			glm::vec4 vertexBoxLocal = inverseTransform * glm::vec4(vertex, 1);
 			if (vertexBoxLocal.x > rectMin.x && vertexBoxLocal.x < rectMax.x &&
 					vertexBoxLocal.y > rectMin.y && vertexBoxLocal.y < rectMax.y &&
@@ -427,8 +450,8 @@ bool anyAsteroidIntersects(const glm::vec3& rectMin, const glm::vec3& rectMax,
 		return false;
 	};
 	
-	glm::vec3 aboxMin = worldMin - asteroidGlobalOffset - asteroidWrappingOffset;
-	glm::vec3 aboxMax = worldMax - asteroidGlobalOffset - asteroidWrappingOffset;
+	glm::vec3 aboxMin = worldMin - asteroidGlobalOffset - asteroidWrappingOffset - 50.0f;
+	glm::vec3 aboxMax = worldMax - asteroidGlobalOffset - asteroidWrappingOffset + 50.0f;
 	glm::ivec3 cellMin(glm::floor(aboxMin / ASTEROIDS_CELL_SIZE));
 	glm::ivec3 cellMax(glm::floor(aboxMax / ASTEROIDS_CELL_SIZE));
 	

@@ -18,9 +18,9 @@ struct Game {
 	
 	Target targets[3];
 	float remTime;
-	float gameTime;
 	
 	float invincibleTime;
+	bool invincibleOverride;
 	
 	bool isGameOver;
 	

@@ -7,7 +7,7 @@ CFLAGS_REL="-O2"
 COMPILER="g++"
 PKG_CONFIG="pkg-config"
 
-CFLAGS="$CFLAGS_DBG --std=c++2a -isystem ext/glm -isystem ext -DGLM_FORCE_CTOR_INIT -DGLM_ENABLE_EXPERIMENTAL
+CFLAGS="$CFLAGS_REL --std=c++2a -isystem ext/glm -isystem ext -DGLM_FORCE_CTOR_INIT -DGLM_ENABLE_EXPERIMENTAL
  $($PKG_CONFIG --cflags sdl2 glew)
  -Wall -Wextra -Wshadow -pedantic -Wfatal-errors -Wno-unused-parameter -Wno-missing-field-initializers"
 

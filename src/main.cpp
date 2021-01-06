@@ -14,6 +14,7 @@
 #include "graphics/model.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/renderer.hpp"
+#include "graphics/collision_debug.hpp"
 #include "game.hpp"
 #include "menu.hpp"
 
@@ -142,12 +143,18 @@ int main() {
 				curInput.keyStateChanged(event.key.keysym.scancode, true);
 			if (event.type == SDL_KEYUP) {
 				curInput.keyStateChanged(event.key.keysym.scancode, false);
-				if (event.key.keysym.scancode == SDL_SCANCODE_F8)
-					frustumPlanesFrozen = !frustumPlanesFrozen;
+#ifdef DEBUG
+				if (event.key.keysym.scancode == SDL_SCANCODE_F6)
+					game.invincibleOverride = !game.invincibleOverride;
 				if (event.key.keysym.scancode == SDL_SCANCODE_F7)
 					drawAsteroidsWireframe = !drawAsteroidsWireframe;
+				if (event.key.keysym.scancode == SDL_SCANCODE_F8)
+					frustumPlanesFrozen = !frustumPlanesFrozen;
 				if (event.key.keysym.scancode == SDL_SCANCODE_F9)
 					game.remTime = 60;
+				if (event.key.keysym.scancode == SDL_SCANCODE_F10)
+					collisionDebug::enabled = !collisionDebug::enabled;
+#endif
 				if (event.key.keysym.scancode == SDL_SCANCODE_C)
 					game.ship.stopped = true;
 				if (event.key.keysym.scancode == SDL_SCANCODE_X)
@@ -235,6 +242,8 @@ int main() {
 		}
 		renderer::endMainPass(vignetteColor, glm::vec3(gameScreenFade));
 		
+		collisionDebug::draw();
+		
 		ui::begin(drawableWidth, drawableHeight);
 		
 		if (inGame) {
@@ -300,9 +309,11 @@ int main() {
 #endif
 		
 		if (inGame) {
-			if (game.invincibleTime > 0) {
+			if (game.invincibleTime > 0 || game.invincibleOverride) {
 				std::string_view invulnString = "invulnerable";
 				glm::vec4 invulnColor(0.5f, 0.5f, 1.0f, std::min(game.invincibleTime * 5, 1.0f));
+				if (game.invincibleOverride)
+					invulnColor.a = 1;
 				ui::drawTextCentered(invulnString, glm::vec2(drawableWidth / 2.0f, 70), invulnColor);
 			}
 			

@@ -93,12 +93,6 @@ void Ship::update(const InputState& curInput, const InputState& prevInput) {
 	glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1), rollOffset, rollAxis) * glm::mat4_cast(rotation);
 	glm::mat4 invRotationMatrix = glm::transpose(rotationMatrix);
 	
-	float moveDist = glm::length(moveVector);
-	if (moveDist > 50) {
-		moveVector *= 50.0f / moveDist;
-		moveDist = 50;
-	}
-	
 	//Updates the camera
 	cameraRotation = glm::slerp(cameraRotation, rotation, std::min(2 * dt, 1.0f));
 	viewMatrix =
@@ -111,18 +105,14 @@ void Ship::update(const InputState& curInput, const InputState& prevInput) {
 	updateAsteroidWrapping(cameraPosition);
 	
 	//Collision detection
-	intersected = false;
-	constexpr float COLLISION_DETECT_MAX_STEP_LEN = 4;
-	const int numColDetectSteps = std::max((int)std::ceil(moveDist / COLLISION_DETECT_MAX_STEP_LEN), 1);
-	for (int step = 1; step <= numColDetectSteps; step++) {
-		const glm::vec3 intPos = pos + moveVector * ((float)step / (float)numColDetectSteps);
-		const glm::mat4 colCheckWorldMatrix = glm::translate(glm::mat4(1), intPos) * rotationMatrix;
-		const glm::mat4 colCheckWorldMatrixInv = invRotationMatrix * glm::translate(glm::mat4(1), -intPos);
-		intersected |= anyAsteroidIntersects(
-			res::shipModel.minPos * glm::vec3(0.8f, 0.7f, 1),
-			res::shipModel.maxPos * glm::vec3(0.8f, 0.7f, 1),
-			colCheckWorldMatrix, colCheckWorldMatrixInv);
-	}
+	const glm::vec3 aabbScale(0.8f, 0.7f, 1);
+	const glm::mat4 colCheckWorldMatrix = glm::translate(glm::mat4(1), pos) * rotationMatrix;
+	const glm::mat4 colCheckWorldMatrixInv = invRotationMatrix * glm::translate(glm::mat4(1), -pos);
+	const glm::vec3 moveLocalSpace(invRotationMatrix * glm::vec4(moveVector, 1));
+	intersected = anyAsteroidIntersects(
+		res::shipModel.minPos * aabbScale + glm::min(moveLocalSpace, glm::vec3(0)),
+		res::shipModel.maxPos * aabbScale + glm::max(moveLocalSpace, glm::vec3(0)),
+		colCheckWorldMatrix, colCheckWorldMatrixInv);
 	
 	pos += moveVector;
 	glm::ivec3 boxOffset(glm::floor(pos / ASTEROID_BOX_SIZE));

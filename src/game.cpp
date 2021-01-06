@@ -43,7 +43,9 @@ void Game::newGame() {
 	ship.vel = glm::vec3(0);
 	ship.forwardVel = 0;
 	invincibleTime = 3;
+	invincibleOverride = false;
 	isGameOver = false;
+	shouldHideTargetInfo = false;
 }
 
 void Game::runFrame(const InputState& curInput, const InputState& prevInput) {
@@ -61,7 +63,7 @@ void Game::runFrame(const InputState& curInput, const InputState& prevInput) {
 	
 	if (invincibleTime > 0) {
 		invincibleTime -= dt;
-	} else if (ship.intersected) {
+	} else if (ship.intersected && !invincibleOverride) {
 		isGameOver = true;
 	}
 	
