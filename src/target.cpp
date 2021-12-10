@@ -122,7 +122,7 @@ void drawTargetUI(const Target& target, const glm::mat4& viewProj, const glm::ve
 	
 	glm::vec4 hPos = viewProj * glm::vec4(target.truePos, 1);
 	
-	glm::vec2 ndcPos = glm::vec2(hPos) / std::abs(hPos.w);
+	glm::vec2 ndcPos = glm::vec2(hPos) / std::max(std::abs(hPos.w), 0.001f);
 	glm::vec2 screenPos = (glm::vec2(ndcPos) * 0.5f + 0.5f) * screenSize;
 	
 	constexpr float MIN_DIST_FROM_EDGE = 20;
@@ -140,7 +140,7 @@ void drawTargetUI(const Target& target, const glm::mat4& viewProj, const glm::ve
 	float edgeY = screenSize.y * 0.5f - MIN_DIST_FROM_EDGE;
 	if (hPos.w < 0 || std::abs(screenPosC.x) > edgeX || std::abs(screenPosC.y) > edgeY) {
 		glm::vec2 relPos = screenPosC / glm::vec2(edgeX, edgeY);
-		relPos /= std::max(std::abs(relPos.x), std::abs(relPos.y));
+		relPos /= std::max(std::max(std::abs(relPos.x), std::abs(relPos.y)), 0.001f);
 		screenPosC = relPos * glm::vec2(edgeX, edgeY);
 		screenPos = screenPosC + screenSize * 0.5f;
 		opacity = 0.5f;

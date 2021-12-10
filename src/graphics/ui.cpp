@@ -7,7 +7,6 @@
 
 #include <fstream>
 #include <bitset>
-#include <GL/glew.h>
 
 void ColoredStringBuilder::push(std::string_view newText, const glm::vec4& color) {
 	text.append(newText);

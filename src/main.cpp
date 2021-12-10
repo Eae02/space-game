@@ -6,6 +6,7 @@
 #include "settings.hpp"
 #include "utils.hpp"
 #include "target.hpp"
+#include "graphics/opengl.hpp"
 #include "graphics/ui.hpp"
 #include "graphics/sphere.hpp"
 #include "graphics/particles.hpp"
@@ -57,11 +58,9 @@ int main() {
 	
 	SDL_GL_SetSwapInterval(settings::vsync);
 	
-	GLenum glewInitStatus = glewInit();
-	if (glewInitStatus != GLEW_OK) {
-		std::cerr << glewGetErrorString(glewInitStatus) << std::endl;
-		return 1;
-	}
+#define GL_FUNC(name, type) ::glfunc::name = reinterpret_cast<type>(SDL_GL_GetProcAddress(#name));
+#include "graphics/glfunctionslist.inl"
+#undef GL_FUNC
 	
 	if (settings::mouseInput) {
 		SDL_SetRelativeMouseMode(SDL_TRUE);

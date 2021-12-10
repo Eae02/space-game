@@ -2,6 +2,8 @@
 
 #include <span>
 
+#include "opengl.hpp"
+
 struct Vertex {
 	glm::vec3 pos;
 	uint32_t normal;

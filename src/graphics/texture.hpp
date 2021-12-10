@@ -1,5 +1,7 @@
 #pragma once
 
+#include "opengl.hpp"
+
 struct Texture {
 	uint32_t mipLevels = 1;
 	uint32_t width = 0;

@@ -25,7 +25,5 @@
 #include <glm/gtx/norm.hpp>
 #include <glm/gtc/color_space.hpp>
 
-#include <GL/glew.h>
-
 #endif
 #endif

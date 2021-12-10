@@ -34,4 +34,4 @@ $COMPILER src/graphics/asteroids_gen.cpp $CFLAGS -include pch.hpp -O2 -g0 -c -o 
 wait
 
 echo "linking..."
-$COMPILER $(find obj -name "*.cpp.o") -o game $($PKG_CONFIG --libs sdl2 glew) -lnoise
+$COMPILER -Wl,-rpath=\$ORIGIN $(find obj -name "*.cpp.o") -o game $($PKG_CONFIG --libs sdl2 gl) -lnoise

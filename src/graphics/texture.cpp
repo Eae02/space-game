@@ -4,7 +4,7 @@
 void Texture::load(const std::string& path, bool srgb, bool generateMipmaps) {
 	uint8_t* data = stbi_load(path.c_str(), (int*)&width, (int*)&height, nullptr, 4);
 	if (data == nullptr) {
-		std::cerr << stbi_failure_reason() << std::endl;
+		std::cerr << "image failed to load: '" << path << "': " << stbi_failure_reason() << std::endl;
 		std::abort();
 	}
 	
@@ -59,12 +59,12 @@ GLuint loadTextureCube(const std::string& dirPath, int resolution) {
 	glTextureStorage2D(texture, (int)log2(resolution) + 1, GL_SRGB8, resolution, resolution);
 	
 	static std::string layerNames[] = {
-		"1.png",
-		"3.png",
-		"5.png",
-		"6.png",
-		"2.png",
-		"4.png"
+		"1.jpg",
+		"3.jpg",
+		"5.jpg",
+		"6.jpg",
+		"2.jpg",
+		"4.jpg"
 	};
 	
 	for (int i = 0; i < 6; i++) {

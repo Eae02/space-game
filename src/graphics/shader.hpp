@@ -1,5 +1,7 @@
 #pragma once
 
+#include "opengl.hpp"
+
 struct Shader {
 	GLuint program = 0;
 	

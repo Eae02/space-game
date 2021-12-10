@@ -1,5 +1,7 @@
 #pragma once
 
+#include "opengl.hpp"
+
 #include <functional>
 
 extern GLuint shadowMap;

@@ -1,5 +1,6 @@
 #include "collision_debug.hpp"
 #include "shader.hpp"
+#include "opengl.hpp"
 #include "../utils.hpp"
 
 bool collisionDebug::enabled = false;

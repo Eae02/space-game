@@ -1,5 +1,6 @@
 #pragma once
 
+#include "opengl.hpp"
 #include "shadows.hpp"
 #include "texture.hpp"
 
