@@ -1,6 +1,7 @@
 #pragma once
 
 #include <random>
+#include <cmath>
 
 constexpr float Z_NEAR = 0.1f;
 constexpr float Z_FAR = 5000.0f;
@@ -52,7 +53,6 @@ void unprojectFrustumCorners(const glm::mat4& inverseViewProj, glm::vec3* corner
 std::array<glm::vec4, 6> createFrustumPlanes(const glm::mat4& inverseViewProj);
 
 extern std::string exeDirPath;
-void initExeDirPath();
 
 struct PairIntIntHash {
 	size_t operator()(const std::pair<int, int>& p) const {

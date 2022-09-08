@@ -21,14 +21,25 @@
 
 #include <iomanip>
 
+#ifdef _WIN32
+extern "C"
+{
+	__declspec(dllexport) uint32_t NvOptimusEnablement = 1;
+	__declspec(dllexport) uint32_t AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
+
 int main() {
-	initExeDirPath();
-	settings::parse();
-	
 	if (SDL_Init(SDL_INIT_VIDEO)) {
 		std::cerr << SDL_GetError() << std::endl;
 		return 1;
 	}
+	
+	char* basePath = SDL_GetBasePath();
+	exeDirPath = basePath;
+	SDL_free(basePath);
+	
+	settings::parse();
 	
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);

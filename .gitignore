@@ -1,5 +1,7 @@
 /.vscode
 /game
+/game.exe
+/libnoise
 /obj
 /pch.hpp.gch
 .directory

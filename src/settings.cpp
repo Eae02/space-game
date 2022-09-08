@@ -2,6 +2,7 @@
 #include "utils.hpp"
 
 #include <fstream>
+#include <cmath>
 
 namespace settings {
 	bool fullscreen         = false;

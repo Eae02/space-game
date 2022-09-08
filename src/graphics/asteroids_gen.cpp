@@ -3,6 +3,7 @@
 
 #include <span>
 #include <random>
+
 #include <noise/noise.h>
 
 static constexpr float SPACING_LO = 15;

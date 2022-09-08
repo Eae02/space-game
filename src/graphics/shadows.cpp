@@ -2,6 +2,13 @@
 #include "../settings.hpp"
 #include "../utils.hpp"
 
+#ifdef near
+#undef near
+#endif
+#ifdef far
+#undef far
+#endif
+
 GLuint shadowMap;
 
 static GLuint shadowMapFbos[NUM_SHADOW_CASCADES];

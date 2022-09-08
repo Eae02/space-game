@@ -23,7 +23,7 @@ struct AsteroidVertex {
 
 static inline void calculateNormals(std::span<AsteroidVertex> vertices, std::span<const glm::uvec3> triangles) {
 	glm::vec3* normals = (glm::vec3*)std::calloc(1, vertices.size() * sizeof(glm::vec3));
-	for (const glm::ivec3& triangle : triangles) {
+	for (const glm::uvec3& triangle : triangles) {
 		glm::vec3 d1 = glm::normalize(vertices[triangle.y].pos - vertices[triangle.x].pos);
 		glm::vec3 d2 = glm::normalize(vertices[triangle.z].pos - vertices[triangle.x].pos);
 		glm::vec3 normal = glm::normalize(glm::cross(d1, d2));
@@ -97,8 +97,8 @@ struct AsteroidSettings {
 	float scale;
 	float initialRotation;
 	float rotationSpeed;
-	uint rotationAxis;
-	uint firstVertex;
+	uint32_t rotationAxis;
+	uint32_t firstVertex;
 };
 
 static_assert(sizeof(AsteroidSettings) == 4 * 8);
