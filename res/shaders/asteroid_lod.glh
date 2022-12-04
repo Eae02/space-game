@@ -1,0 +1,11 @@
+const int NUM_LOD_LEVELS = 5;
+const float NORMAL_LOD_BIAS = 1.0;
+const float SHADOW_LOD_BIAS = -1.0;
+
+float getLodLevelF(float dist, float distPerLod) {
+	return float(NUM_LOD_LEVELS) - clamp(dist / distPerLod, 0.0, float(NUM_LOD_LEVELS));
+}
+
+int getLodLevelI(float lodF, float bias) {
+	return clamp(int(ceil(lodF + bias)), 0, NUM_LOD_LEVELS - 1);
+}

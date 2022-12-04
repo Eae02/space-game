@@ -1,5 +1,6 @@
 /.vscode
-/game
+/spacegame
+/spacegame_d
 /game.exe
 /libnoise
 /obj

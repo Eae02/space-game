@@ -12,13 +12,10 @@ layout(binding=1) uniform sampler2D normalMap;
 layout(binding=2) uniform sampler2DArrayShadow shadowMap;
 
 #include lighting.glh
+#include asteroid_rotation.glh
 
 const float specIntensity = 0.2;
 const float specExponent = 20;
-
-layout(binding=0, std430) readonly buffer AsteroidTransformsBuf {
-	mat4 asteroidTransforms[];
-};
 
 void main() {
 	vec3 normal = normalize(normal_v);
@@ -34,7 +31,7 @@ void main() {
 	vec3 tnormalX = vec3(texture(normalMap, texPos_v.zy).rg * 2 - 1 + normal.zy, normal.x);
 	vec3 tnormalY = vec3(texture(normalMap, texPos_v.xz).rg * 2 - 1 + normal.xz, normal.y);
 	vec3 tnormalZ = vec3(texture(normalMap, texPos_v.xy).rg * 2 - 1 + normal.xy, normal.z);
-	vec3 worldNormal = normalize((asteroidTransforms[drawIndex_v] * vec4(tnormalX.zyx * blend.x + tnormalY.xzy * blend.y + tnormalZ.xyz * blend.z, 0)).xyz);
+	vec3 worldNormal = normalize((getRotation(drawIndex_v) * (tnormalX.zyx * blend.x + tnormalY.xzy * blend.y + tnormalZ.xyz * blend.z)).xyz);
 	
 	color_out = vec4(calculateLighting(worldPos_v, worldNormal, diffuseAndAO, specIntensity, specExponent), 0);
 }

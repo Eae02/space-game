@@ -132,6 +132,9 @@ int main() {
 	bool inGame = false;
 	
 	float gameScreenFade = 1;
+	float globalLodBias = 0;
+	bool decreaseGlobalLodBias = false;
+	bool increaseGlobalLodBias = false;
 	
 	ui::Button gameOverPlayAgain = { "Play Again" };
 	ui::Button gameOverMainMenu = { "Main Menu" };
@@ -149,20 +152,29 @@ int main() {
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_QUIT)
 				shouldClose = true;
-			if (event.type == SDL_KEYDOWN)
+			
+			if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
+				if (event.key.keysym.scancode == SDL_SCANCODE_F6)
+					decreaseGlobalLodBias = event.type == SDL_KEYDOWN;
+				if (event.key.keysym.scancode == SDL_SCANCODE_F7)
+					increaseGlobalLodBias = event.type == SDL_KEYDOWN;
+			}
+			
+			if (event.type == SDL_KEYDOWN) {
 				curInput.keyStateChanged(event.key.keysym.scancode, true);
+			}
 			if (event.type == SDL_KEYUP) {
 				curInput.keyStateChanged(event.key.keysym.scancode, false);
 #ifdef DEBUG
-				if (event.key.keysym.scancode == SDL_SCANCODE_F6)
+				if (event.key.keysym.scancode == SDL_SCANCODE_F1)
 					game.invincibleOverride = !game.invincibleOverride;
-				if (event.key.keysym.scancode == SDL_SCANCODE_F7)
+				if (event.key.keysym.scancode == SDL_SCANCODE_F2)
 					drawAsteroidsWireframe = !drawAsteroidsWireframe;
-				if (event.key.keysym.scancode == SDL_SCANCODE_F8)
+				if (event.key.keysym.scancode == SDL_SCANCODE_F3)
 					frustumPlanesFrozen = !frustumPlanesFrozen;
-				if (event.key.keysym.scancode == SDL_SCANCODE_F9)
+				if (event.key.keysym.scancode == SDL_SCANCODE_F4)
 					game.remTime = 60;
-				if (event.key.keysym.scancode == SDL_SCANCODE_F10)
+				if (event.key.keysym.scancode == SDL_SCANCODE_F5)
 					collisionDebug::enabled = !collisionDebug::enabled;
 #endif
 				if (event.key.keysym.scancode == SDL_SCANCODE_C)
@@ -178,6 +190,14 @@ int main() {
 			}
 		}
 		curInput.leftMouse = (SDL_GetMouseState(&curInput.mouseX, &curInput.mouseY) & SDL_BUTTON_LMASK) != 0;
+		
+#ifdef DEBUG
+		if (int globalLodBiasDelta = (int)increaseGlobalLodBias - (int)decreaseGlobalLodBias) {
+			globalLodBias += (float)globalLodBiasDelta * dt;
+			globalLodBias = glm::clamp(globalLodBias, -(float)ASTEROID_NUM_LOD_LEVELS, (float)ASTEROID_NUM_LOD_LEVELS);
+			setGlobalLodBias(globalLodBias);
+		}
+#endif
 		
 		if (inGame) {
 			game.runFrame(curInput, prevInput);
@@ -307,6 +327,7 @@ int main() {
 			"bpos: " + floatToStr(game.ship.pos.x) + ", " + floatToStr(game.ship.pos.y) + ", " + floatToStr(game.ship.pos.z),
 			"box: " + std::to_string(game.ship.boxIndex.x) + ", " + std::to_string(game.ship.boxIndex.y) + ", " + std::to_string(game.ship.boxIndex.z),
 			"atot: " + std::to_string(numAsteroids),
+			"lod bias: " + floatToStr(globalLodBias),
 			(game.ship.intersected ? "int: true" : "int: false"),
 			"fps: " + floatToStr(1.0f / dt),
 			"frame: " + floatToStr(1000 * (float)elapsedTicks / (float)perfCounterFrequency) + "ms",

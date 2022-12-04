@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e 0
 
 EXE_NAME="spacegame"
 
@@ -9,7 +8,7 @@ CFLAGS_REL="-O2"
 COMPILER="g++"
 PKG_CONFIG="pkg-config"
 
-if [ $1 == "release" ]; then
+if [ $1 == "rel" ]; then
 	CFLAGS=$CFLAGS_REL
 	BUILD_TYPE="linux_rel"
 else
@@ -23,7 +22,8 @@ rm -Rf "./$OBJ_PATH/src" 2> /dev/null
 
 CFLAGS="$CFLAGS --std=c++20 -isystem ext/glm -isystem ext -DGLM_FORCE_CTOR_INIT -DGLM_ENABLE_EXPERIMENTAL
  $($PKG_CONFIG --cflags sdl2)
- -Wall -Wextra -Wshadow -pedantic -Wfatal-errors -Wno-unused-parameter -Wno-missing-field-initializers"
+ -Wall -Wextra -Wshadow -pedantic -Wfatal-errors -Wno-unused-parameter -Wno-missing-field-initializers
+ -Wno-unused-but-set-variable -Wno-unused-variable"
 
 if [ ! -f pch.hpp.gch ]; then
 	$COMPILER $CFLAGS pch.hpp -o pch.hpp.gch

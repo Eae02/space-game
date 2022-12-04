@@ -1,0 +1,19 @@
+#include asteroid_rotation.glh
+#include asteroid_lod.glh
+
+layout(binding=0, std430) readonly buffer AsteroidTransformsTSBuf {
+	vec4 transformTS[];
+};
+
+const float LOD_FADE_LEN = 0.15;
+
+vec3 transformToWorld(vec3 position, vec3 lowerLodPos, float lodBias, out vec3 scaledPos) {
+	vec4 transform = transformTS[gl_DrawIDARB];
+	vec2 scaleLodFade = unpackUnorm2x16(floatBitsToUint(transform.w));
+	float lodF = scaleLodFade.y * float(NUM_LOD_LEVELS + 2) - 1.0;
+	float lodFract = fract(clamp(lodF + lodBias, 0.5, float(NUM_LOD_LEVELS) - 0.5));
+	float lodFade = min(lodFract, LOD_FADE_LEN) / LOD_FADE_LEN;
+	
+	scaledPos = mix(lowerLodPos, position, lodFade) * scaleLodFade.x;
+	return getRotation(gl_DrawIDARB) * scaledPos + transform.xyz;
+}

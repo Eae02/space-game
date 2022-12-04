@@ -3,7 +3,7 @@
 
 #include <unordered_map>
 
-std::vector<glm::vec3> sphereVertices[NUM_SPHERE_LODS];
+std::vector<SphereVertex> sphereVertices[NUM_SPHERE_LODS];
 std::vector<glm::uvec3> sphereTriangles[NUM_SPHERE_LODS];
 
 static const glm::vec3 baseSphereVertices[] = {
@@ -27,6 +27,8 @@ static const uint32_t baseSphereIndices[] = {
 
 static void generateNextSphereLod(uint32_t lod) {
 	sphereVertices[lod] = sphereVertices[lod - 1];
+	for (SphereVertex& vertex : sphereVertices[lod])
+		vertex.prevLodV1 = vertex.prevLodV2 = -1;
 	std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, PairIntIntHash> midVertices;
 	
 	auto getMiddleVertex = [&] (uint32_t v1, uint32_t v2) {
@@ -37,7 +39,10 @@ static void generateNextSphereLod(uint32_t lod) {
 		
 		const uint32_t vertexId = sphereVertices[lod].size();
 		midVertices.emplace(key, vertexId);
-		sphereVertices[lod].push_back(glm::normalize(sphereVertices[lod - 1][v1] + sphereVertices[lod - 1][v2]));
+		sphereVertices[lod].push_back(SphereVertex {
+			glm::normalize(sphereVertices[lod - 1][v1].pos + sphereVertices[lod - 1][v2].pos),
+			(int)v1, (int)v2
+		});
 		return vertexId;
 	};
 	
@@ -53,7 +58,11 @@ static void generateNextSphereLod(uint32_t lod) {
 }
 
 void generateSphereMeshes() {
-	sphereVertices[0] = std::vector<glm::vec3>(std::begin(baseSphereVertices), std::end(baseSphereVertices));
+	sphereVertices[0].resize(std::size(baseSphereVertices));
+	for (size_t i = 0; i < std::size(baseSphereVertices); i++) {
+		sphereVertices[0][i].pos = baseSphereVertices[i];
+	}
+	
 	for (size_t i = 0; i < std::size(baseSphereIndices); i += 3) {
 		sphereTriangles[0].emplace_back(baseSphereIndices[i], baseSphereIndices[i + 1], baseSphereIndices[i + 2]);
 	}

@@ -57,7 +57,7 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, vec4 diffuseAndAo, float spec
 	                  2.0 * C2 * L1m1 * normal.y +
 	                  2.0 * C2 * L10  * normal.z;
 	
-	vec3 litColor = irradiance * 0.15 * diffuseAndAo.a * diffuseAndAo.rgb;
+	vec3 litColor = irradiance * 0.1 * diffuseAndAo.a * diffuseAndAo.rgb;
 	
 	vec3 dirToEye = normalize(rs.cameraPos - worldPos);
 	

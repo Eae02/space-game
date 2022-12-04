@@ -18,6 +18,7 @@ static_assert(NUM_SPHERE_LODS >= ASTEROID_NUM_LOD_LEVELS);
 
 struct AsteroidVertex {
 	glm::vec3 pos;
+	glm::vec3 lowerLodPos;
 	uint32_t normal;
 };
 
@@ -74,13 +75,19 @@ AsteroidVariant generateSingleAsteroidVariant(std::mt19937& rng, std::vector<Ast
 	for (uint32_t lod = 0; lod < ASTEROID_NUM_LOD_LEVELS; lod++) {
 		size_t firstVertex = vertices.size();
 		
-		for (const glm::vec3& vertex : sphereVertices[lod]) {
-			glm::vec3 scaledVertex = vertex * size;
+		for (const SphereVertex& vertex : sphereVertices[lod]) {
+			glm::vec3 scaledVertex = vertex.pos * size;
 			float noiseValue = (float)mainNoise.GetValue(scaledVertex.x, scaledVertex.y, scaledVertex.z) * 0.5f + 0.5f;
 			float ridgeNoiseValue = (float)ridgeNoise.GetValue(scaledVertex.x, scaledVertex.y, scaledVertex.z) * 0.5f + 0.5f;
 			float radius = glm::mix(innerRadius, 1.0f, noiseValue) * glm::mix(0.8f, 1.0f, ridgeNoiseValue);
 			glm::vec3 pos = scaledVertex * radius;
-			vertices.push_back(AsteroidVertex { pos, 0 });
+			glm::vec3 prevLodPos = pos;
+			if (vertex.prevLodV1 != -1 && vertex.prevLodV2 != -1) {
+				prevLodPos = (
+					vertices.at(firstVertex + vertex.prevLodV1).pos +
+					vertices.at(firstVertex + vertex.prevLodV2).pos) / 2.0f;
+			}
+			vertices.push_back(AsteroidVertex { pos, prevLodPos, 0 });
 			if (lod == COLLISION_LOD) {
 				variant.collisionVertices.push_back(pos);
 			}
@@ -110,7 +117,8 @@ static GLuint asteroidVertexBuffer;
 static GLuint asteroidIndexBuffer;
 
 static GLuint asteroidsSettingsBuffer;
-static GLuint asteroidsMatrixBuffer;
+static GLuint asteroidsTransformTSBuffer;
+static GLuint asteroidsTransformRBuffer;
 static GLuint asteroidsDrawDataBuffer;
 
 static uint32_t lodLevelFirstIndex[ASTEROID_NUM_LOD_LEVELS];
@@ -127,6 +135,7 @@ struct {
 	GLuint globalOffset;
 	GLuint frustumPlanes;
 	GLuint frustumPlanesShadow;
+	GLuint globalLodBias;
 } uniformLocs;
 
 uint32_t numAsteroids = 0;
@@ -164,6 +173,9 @@ static void loadAsteroidShaders() {
 	uniformLocs.globalOffset = asteroidComputeShader.findUniform("globalOffset");
 	uniformLocs.frustumPlanes = asteroidComputeShader.findUniform("frustumPlanes");
 	uniformLocs.frustumPlanesShadow = asteroidComputeShader.findUniform("frustumPlanesShadow");
+	uniformLocs.globalLodBias = asteroidComputeShader.findUniform("globalLodBias");
+	
+	setGlobalLodBias(0.0f);
 }
 
 struct AsteroidInstance {
@@ -232,8 +244,11 @@ void initializeAsteroids() {
 	glVertexArrayAttribFormat(asteroidVao, 0, 3, GL_FLOAT, false, offsetof(AsteroidVertex, pos));
 	glVertexArrayAttribBinding(asteroidVao, 0, 0);
 	glEnableVertexArrayAttrib(asteroidVao, 1);
-	glVertexArrayAttribFormat(asteroidVao, 1, 3, GL_BYTE, true, offsetof(AsteroidVertex, normal));
+	glVertexArrayAttribFormat(asteroidVao, 1, 3, GL_FLOAT, false, offsetof(AsteroidVertex, lowerLodPos));
 	glVertexArrayAttribBinding(asteroidVao, 1, 0);
+	glEnableVertexArrayAttrib(asteroidVao, 2);
+	glVertexArrayAttribFormat(asteroidVao, 2, 3, GL_BYTE, true, offsetof(AsteroidVertex, normal));
+	glVertexArrayAttribBinding(asteroidVao, 2, 0);
 	
 	glVertexArrayVertexBuffer(asteroidVao, 0, asteroidVertexBuffer, 0, sizeof(AsteroidVertex));
 	glVertexArrayElementBuffer(asteroidVao, asteroidIndexBuffer);
@@ -285,8 +300,11 @@ void initializeAsteroids() {
 	glNamedBufferStorage(asteroidsSettingsBuffer, sizeof(AsteroidSettings) * asteroidSettings.size(), asteroidSettings.data(), 0);
 	numAsteroids = asteroidSettings.size();
 	
-	glCreateBuffers(1, &asteroidsMatrixBuffer);
-	glNamedBufferStorage(asteroidsMatrixBuffer, sizeof(glm::mat4) * numAsteroids, nullptr, 0);
+	glCreateBuffers(1, &asteroidsTransformTSBuffer);
+	glNamedBufferStorage(asteroidsTransformTSBuffer, 16 * numAsteroids, nullptr, 0);
+	
+	glCreateBuffers(1, &asteroidsTransformRBuffer);
+	glNamedBufferStorage(asteroidsTransformRBuffer, 12 * numAsteroids, nullptr, 0);
 	
 	bytesPerDrawDataRange = 5 * sizeof(uint32_t) * numAsteroids;
 	glCreateBuffers(1, &asteroidsDrawDataBuffer);
@@ -310,13 +328,18 @@ void updateAsteroidWrapping(const glm::vec3& cameraPos) {
 	asteroidGlobalOffset = cameraPos - ASTEROID_BOX_SIZE / 2;
 }
 
+void setGlobalLodBias(float globalLodBias) {
+	glProgramUniform1f(asteroidComputeShader.program, uniformLocs.globalLodBias, globalLodBias);
+}
+
 void prepareAsteroids(const glm::vec4 frustumPlanes[6], const std::array<glm::vec4, 4>* frustumPlanesShadow) {
 	constexpr uint32_t COMPUTE_SHADER_LOCAL_SIZE_X = 64;
 	
 	asteroidComputeShader.use();
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, asteroidsSettingsBuffer);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, asteroidsMatrixBuffer);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, asteroidsDrawDataBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, asteroidsTransformTSBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, asteroidsTransformRBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, asteroidsDrawDataBuffer);
 	
 	static_assert(sizeof(*frustumPlanesShadow) == sizeof(glm::vec4) * 4);
 	
@@ -334,7 +357,8 @@ void drawAsteroidsShadow(uint32_t cascade, const glm::mat4& shadowMatrix) {
 	
 	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, asteroidsDrawDataBuffer);
 	
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, asteroidsMatrixBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, asteroidsTransformTSBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, asteroidsTransformRBuffer);
 	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 	
 	glUniformMatrix4fv(0, 1, false, (const float*)&shadowMatrix);
@@ -353,7 +377,8 @@ void drawAsteroids(bool wireframe) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
 	
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, asteroidsMatrixBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, asteroidsTransformTSBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, asteroidsTransformRBuffer);
 	glMemoryBarrier(GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 	
 	res::asteroidAlbedo.bind(0);

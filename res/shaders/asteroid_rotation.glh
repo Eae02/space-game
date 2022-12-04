@@ -1,0 +1,14 @@
+layout(binding=1, std430) readonly buffer AsteroidTransformsRBuf {
+	uint transformR[];
+};
+
+mat3 getRotation(uint drawIndex) {
+	vec2 r0 = unpackSnorm2x16(transformR[drawIndex * 3 + 0]);
+	vec2 r1 = unpackSnorm2x16(transformR[drawIndex * 3 + 1]);
+	vec2 r2 = unpackSnorm2x16(transformR[drawIndex * 3 + 2]);
+	
+	vec3 rx = vec3(r0, r2.x);
+	vec3 ry = vec3(r1, r2.y);
+	vec3 rz = cross(rx, ry);
+	return mat3(rx, ry, rz);
+}

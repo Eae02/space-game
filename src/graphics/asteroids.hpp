@@ -18,6 +18,8 @@ void initializeAsteroids();
 
 void clearAsteroidWrapping();
 
+void setGlobalLodBias(float globalLodBias);
+
 void updateAsteroidWrapping(const glm::vec3& cameraPos);
 void prepareAsteroids(const glm::vec4 frustumPlanes[6], const std::array<glm::vec4, 4>* frustumPlanesShadow);
 
