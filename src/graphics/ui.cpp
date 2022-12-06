@@ -169,7 +169,7 @@ namespace ui {
 		instanceRef.srcRect.y = srcRect.min.y + srcRect.size.y;
 		instanceRef.srcRect.z = srcRect.min.x + srcRect.size.x;
 		instanceRef.srcRect.w = srcRect.min.y;
-		instanceRef.color = packVectorU(color);
+		instanceRef.color = glm::packUnorm4x8(color);
 		
 		numSprites++;
 	}

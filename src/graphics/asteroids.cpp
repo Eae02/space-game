@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <random>
 #include <unordered_map>
+#include <glm/gtc/packing.hpp>
 #include <noise/noise.h>
 
 static_assert(NUM_SPHERE_LODS >= ASTEROID_NUM_LOD_LEVELS);
@@ -34,7 +35,7 @@ static inline void calculateNormals(std::span<AsteroidVertex> vertices, std::spa
 	}
 	for (size_t i = 0; i < vertices.size(); i++) {
 		if (glm::length2(normals[i]) > 1E-6f) {
-			vertices[i].normal = packVectorS(glm::normalize(normals[i]));
+			vertices[i].normal = glm::packSnorm3x10_1x2(glm::vec4(glm::normalize(normals[i]), 0.0f));
 		}
 	}
 	std::free(normals);
@@ -247,7 +248,7 @@ void initializeAsteroids() {
 	glVertexArrayAttribFormat(asteroidVao, 1, 3, GL_FLOAT, false, offsetof(AsteroidVertex, lowerLodPos));
 	glVertexArrayAttribBinding(asteroidVao, 1, 0);
 	glEnableVertexArrayAttrib(asteroidVao, 2);
-	glVertexArrayAttribFormat(asteroidVao, 2, 3, GL_BYTE, true, offsetof(AsteroidVertex, normal));
+	glVertexArrayAttribFormat(asteroidVao, 2, 4, GL_INT_2_10_10_10_REV, true, offsetof(AsteroidVertex, normal));
 	glVertexArrayAttribBinding(asteroidVao, 2, 0);
 	
 	glVertexArrayVertexBuffer(asteroidVao, 0, asteroidVertexBuffer, 0, sizeof(AsteroidVertex));

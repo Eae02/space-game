@@ -1,6 +1,7 @@
 #include "model.hpp"
 #include "../utils.hpp"
 
+#include <glm/gtc/packing.hpp>
 #include <tiny_obj_loader.h>
 #include <iostream>
 
@@ -15,8 +16,8 @@ void Model::initializeVao() {
 	}
 	
 	glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, pos));
-	glVertexArrayAttribFormat(vao, 1, 3, GL_BYTE, GL_TRUE, offsetof(Vertex, normal));
-	glVertexArrayAttribFormat(vao, 2, 3, GL_BYTE, GL_TRUE, offsetof(Vertex, tangent));
+	glVertexArrayAttribFormat(vao, 1, 4, GL_INT_2_10_10_10_REV, GL_TRUE, offsetof(Vertex, normal));
+	glVertexArrayAttribFormat(vao, 2, 4, GL_INT_2_10_10_10_REV, GL_TRUE, offsetof(Vertex, tangent));
 	glVertexArrayAttribFormat(vao, 3, 2, GL_FLOAT, GL_FALSE, offsetof(Vertex, texcoord));
 }
 
@@ -73,7 +74,7 @@ void generateTangents(std::span<Vertex> vertices, std::span<const glm::vec3> nor
 				tangents1[v] = -tangents1[v];
 			}
 		}
-		vertices[v].tangent = packVectorS(tangents1[v]);
+		vertices[v].tangent = glm::packSnorm3x10_1x2(glm::vec4(tangents1[v], 0.0f));
 	}
 	
 	std::free(tangents1);
@@ -126,7 +127,7 @@ void Model::loadObj(const std::string& path) {
 			vertex.pos.x = shape.mesh.positions[i * 3 + 0];
 			vertex.pos.y = shape.mesh.positions[i * 3 + 1];
 			vertex.pos.z = shape.mesh.positions[i * 3 + 2];
-			vertex.normal = packVectorS(normal);
+			vertex.normal = glm::packSnorm3x10_1x2(glm::vec4(normal, 0.0f));
 			vertex.texcoord.x = shape.mesh.texcoords[i * 2 + 0];
 			vertex.texcoord.y = shape.mesh.texcoords[i * 2 + 1];
 			

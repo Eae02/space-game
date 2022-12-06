@@ -18,24 +18,6 @@ constexpr inline auto roundToNextMul(T value, U multiple) {
 	return valModMul == 0 ? value : (value + multiple - valModMul);
 }
 
-template<int S>
-inline uint32_t packVectorS(const glm::vec<S, float, glm::defaultp>& vec) {
-	uint32_t ret = 0;
-	for (int i = 0; i < S; i++) {
-		reinterpret_cast<int8_t*>(&ret)[i] = (int8_t)glm::clamp((int)(vec[i] * 127), -127, 127);
-	}
-	return ret;
-}
-
-template<int S>
-inline uint32_t packVectorU(const glm::vec<S, float, glm::defaultp>& vec) {
-	uint32_t ret = 0;
-	for (int i = 0; i < S; i++) {
-		reinterpret_cast<uint8_t*>(&ret)[i] = (uint8_t)glm::clamp((int)(vec[i] * 256), 0, 255);
-	}
-	return ret;
-}
-
 inline glm::vec3 randomDirection(std::mt19937& rng) {
 	const float theta = std::uniform_real_distribution<float>(0, (float)M_PI * 2)(rng);
 	const float cosPitch = std::uniform_real_distribution<float>(-1.0f, 1.0f)(rng);

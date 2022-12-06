@@ -2,7 +2,7 @@
 
 layout(location=0) in vec3 position_in;
 layout(location=1) in vec3 lowerLodPos_in;
-layout(location=2) in vec3 normal_in;
+layout(location=2) in vec4 normal_in;
 
 #include rendersettings.glh
 #include asteroid_vs.glh
@@ -18,7 +18,7 @@ void main() {
 	vec3 scaledPos;
 	worldPos_v = transformToWorld(position_in, lowerLodPos_in, NORMAL_LOD_BIAS, scaledPos);
 	texPos_v = scaledPos * textureScale;
-	normal_v = normal_in;
+	normal_v = normal_in.xyz;
 	drawIndex_v = gl_DrawIDARB;
 	gl_Position = rs.vpMatrix * vec4(worldPos_v, 1);
 }

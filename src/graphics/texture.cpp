@@ -1,5 +1,5 @@
 #include "texture.hpp"
-#include <stb_image.h>
+#include <stb/stb_image.h>
 
 void Texture::load(const std::string& path, bool srgb, bool generateMipmaps) {
 	uint8_t* data = stbi_load(path.c_str(), (int*)&width, (int*)&height, nullptr, 4);
